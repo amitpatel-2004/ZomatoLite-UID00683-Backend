@@ -1,12 +1,18 @@
 from flask import Flask
-from app import settings
-from app.routes import main_bp
+
+from app.enums import ApiVersionPrefix
+from app.routes import api_bp
+
 
 def create_app() -> Flask:
-    """Create and return a configured application instance."""
-    app = Flask(__name__)
-    app.config.from_object(settings)
+    """Create and return a configured application instance.
 
-    app.register_blueprint(main_bp)
+    Returns:
+        Flask: An initialized and configured Flask application instance ready
+        to handle routing contexts.
+    """
+    app = Flask(__name__)
+
+    app.register_blueprint(api_bp, url_prefix=ApiVersionPrefix.V1.value)
 
     return app

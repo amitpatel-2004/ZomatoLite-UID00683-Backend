@@ -9,9 +9,9 @@ firebase-admin = "~=6.5.0"
 google-cloud-firestore = "~=2.19.0"
 
 [dev-packages]
-python-dotenv = "*"
-pytest = "*"
-pytest-cov = "*"
+python-dotenv = "~=1.2.2"
+pytest = "~=9.0.3"
+pytest-cov = "~=7.1.0"
 
 [requires]
 python_version = "3.13"

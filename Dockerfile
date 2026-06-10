@@ -14,8 +14,8 @@ RUN pip install --no-cache-dir pipenv gunicorn && \
     pipenv install --system --deploy --clear
 
 COPY ./app ./app
-COPY ./main.py ./main.py
+COPY ./run.py ./run.py
 
 EXPOSE 8080
 
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 main:app
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 run:app

@@ -31,6 +31,12 @@ cd zomato-lite-backend
 ```
 
 ### 2. Install Dependencies
+#### Dev
+```bash
+pipenv install --dev
+```
+
+#### Prod
 ```bash
 pipenv install
 ```
@@ -55,25 +61,7 @@ In a separate terminal window, launch the development server:
 pipenv run python app.py
 ```
 
-## Project Structure
-
-```text
-zomato-lite-backend/
-├── app/
-│   ├── __init__.py         # Application factory (create_app)
-│   ├── config.py           # Configuration loader
-│   ├── modules/            # Feature modules (auth, restaurants, orders, etc.)
-│   └── shared/             # Utilities, Firebase initializer, middlewares
-├── tests/                  # Pytest test suites
-├── .env                    # Local environment variables (git-ignored)
-├── .env.example            # Template for environment variables (committed)
-├── app.py                  # Primary application entry point
-├── firebase.json           # Firebase emulator configurations
-└── Pipfile                 # Dependency tracking file
-```
-
 ## Running Tests
-
 Execute your test suite locally using `pytest` through Pipenv:
 ```bash
 pipenv run pytest

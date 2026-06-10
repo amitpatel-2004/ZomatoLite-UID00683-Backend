@@ -1,14 +1,32 @@
+from http import HTTPStatus
+from typing import Any
 from flask import jsonify
+from flask.typing import ResponseReturnValue
 
 
-def json_response(success: bool, message: str, data=None, status_code: int = 200):
-    """Return a standard JSON response tuple for Flask routes.
+def json_response(
+    message: str,
+    data: Any = None,
+    errors: dict[str, Any] | None = None,
+    status_code: HTTPStatus = HTTPStatus.OK,
+) -> ResponseReturnValue:
+    """Return a standardized JSON response tuple for Flask routes.
 
-    :param success: True for success, False for error.
-    :param message: Description of the response status.
-    :param data: Optional payload data.
-    :param status_code: HTTP status code (default: 200).
-    :return: Tuple of (Flask Response, int status code).
+    Args:
+        message: Description of the response status.
+        data: Optional payload data.
+        errors: Optional dictionary containing structured validation or system errors.
+        status_code: HTTP status code (default: 200).
+
+    Returns:
+        Tuple of (Flask Response, int status code) matching ResponseReturnValue.
     """
-    response_body = {"success": success, "message": message, "data": data}
-    return jsonify(response_body), status_code
+    response_body: dict[str, Any] = {"message": message}
+
+    if data is not None:
+        response_body["data"] = data
+
+    if errors is not None:
+        response_body["errors"] = errors
+
+    return jsonify(response_body), status_code.value
