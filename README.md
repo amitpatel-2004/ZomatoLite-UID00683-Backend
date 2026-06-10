@@ -59,7 +59,7 @@ pipenv run python app.py
 
 ```text
 zomato-lite-backend/
-├── src/
+├── app/
 │   ├── __init__.py         # Application factory (create_app)
 │   ├── config.py           # Configuration loader
 │   ├── modules/            # Feature modules (auth, restaurants, orders, etc.)
