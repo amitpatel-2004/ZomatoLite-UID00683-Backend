@@ -1,7 +1,6 @@
 from http import HTTPStatus
 from typing import Any
-from flask import jsonify
-from flask.typing import ResponseReturnValue
+from flask import jsonify, Response
 
 
 def json_response(
@@ -9,7 +8,7 @@ def json_response(
     data: Any = None,
     errors: dict[str, Any] | None = None,
     status_code: HTTPStatus = HTTPStatus.OK,
-) -> ResponseReturnValue:
+) -> tuple[Response, HTTPStatus]:
     """Return a standardized JSON response tuple for Flask routes.
 
     Args:
@@ -19,7 +18,7 @@ def json_response(
         status_code: HTTP status code (default: 200).
 
     Returns:
-        Tuple of (Flask Response, int status code) matching ResponseReturnValue.
+        Tuple of (Flask Response, int status code).
     """
     response_body: dict[str, Any] = {"message": message}
 
@@ -29,4 +28,4 @@ def json_response(
     if errors is not None:
         response_body["errors"] = errors
 
-    return jsonify(response_body), status_code.value
+    return jsonify(response_body), status_code
