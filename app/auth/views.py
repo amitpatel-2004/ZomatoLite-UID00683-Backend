@@ -1,7 +1,6 @@
 from http import HTTPStatus
 
-from flask import request
-from flask.typing import ResponseReturnValue
+from flask import request, Response
 from flask.views import MethodView
 from pydantic import ValidationError
 
@@ -11,6 +10,7 @@ from app.auth.constants import (
     RESPONSE_MSG_INVALID_CREDENTIALS,
     RESPONSE_MSG_LOGIN_SUCCESS,
     RESPONSE_MSG_REGISTER_SUCCESS,
+    RESPONSE_MSG_INVALID_ROLE,
 )
 from app.auth.schemas import UserLoginSchema, UserRegisterSchema, AuthResponseSchema
 from app.auth.service import login_user, register_user
@@ -26,7 +26,7 @@ class RegisterView(MethodView):
     Handles POST /auth/register — creates a new user account.
     """
 
-    def post(self) -> ResponseReturnValue:
+    def post(self) -> tuple[Response, HTTPStatus]:
         """Create a new user account.
 
         Expects JSON body:
@@ -47,8 +47,20 @@ class RegisterView(MethodView):
             input_data = UserRegisterSchema(**body)
         except ValidationError as err:
             error_details = {str(e["loc"][0]): e["msg"] for e in err.errors()}
+
+            is_role_error = any(
+                e["loc"] == ("role",) and "value_error" in e["type"]
+                for e in err.errors()
+            )
+
+            msg = (
+                RESPONSE_MSG_INVALID_ROLE
+                if is_role_error
+                else RESPONSE_MSG_MISSING_FIELDS
+            )
+
             return json_response(
-                message=RESPONSE_MSG_MISSING_FIELDS,
+                message=msg,
                 errors=error_details,
                 status_code=HTTPStatus.BAD_REQUEST,
             )
@@ -90,7 +102,7 @@ class LoginView(MethodView):
     Handles POST /auth/login — authenticates a user and returns a custom token.
     """
 
-    def post(self) -> ResponseReturnValue:
+    def post(self) -> tuple[Response, HTTPStatus]:
         """Authenticate an existing user.
 
         Expects JSON body:

@@ -2,7 +2,7 @@ import unittest
 from http import HTTPStatus
 
 from app import create_app
-from app.constants import SERVER_HEALTHY_MESSAGE
+from app.constants import RESPONSE_MSG_HEALTH_OK
 
 
 class TestHealthEndpoint(unittest.TestCase):
@@ -21,5 +21,5 @@ class TestHealthEndpoint(unittest.TestCase):
         self.assertEqual(response.status_code, HTTPStatus.OK.value)
 
         json_data = response.get_json()
-        self.assertEqual(json_data["message"], SERVER_HEALTHY_MESSAGE)
+        self.assertEqual(json_data["message"], RESPONSE_MSG_HEALTH_OK)
         self.assertNotIn("errors", json_data)
