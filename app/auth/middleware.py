@@ -1,6 +1,6 @@
 from functools import wraps
 from http import HTTPStatus
-from typing import Callable
+from typing import Callable, Optional
 
 from firebase_admin import auth
 from flask import g, request
@@ -21,12 +21,16 @@ def require_auth(f: Callable) -> Callable:
         f: The view function to protect.
 
     Returns:
-        The wrapped function. Returns HTTP 401 if the token is missing or invalid.
+        The wrapped function.
+
+    Raises:
+        HTTP 401 Unauthorized: If the Authorization header is missing, malformed,
+            or contains an invalid/expired token.
     """
 
     @wraps(f)
     def decorated(*args, **kwargs):
-        auth_header: str | None = request.headers.get("Authorization")
+        auth_header: Optional[str] = request.headers.get("Authorization")
 
         if not auth_header or not auth_header.startswith("Bearer "):
             return json_response(
@@ -63,7 +67,10 @@ def require_role(*roles: str) -> Callable:
         *roles: The role strings allowed to access this route (e.g. "owner").
 
     Returns:
-        A decorator that returns HTTP 403 if the user's role is not in the allowed list.
+        A decorator that wraps the view function with role enforcement.
+
+    Raises:
+        HTTP 403 Forbidden: If the authenticated user's role is not in *roles*.
     """
 
     def decorator(f: Callable) -> Callable:

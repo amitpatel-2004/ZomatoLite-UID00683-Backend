@@ -6,14 +6,13 @@ from pydantic import ValidationError
 
 from app.auth.constants import (
     FIREBASE_ERROR_EMAIL_EXISTS,
-    RESPONSE_MSG_EMAIL_EXISTS,
     RESPONSE_MSG_INVALID_CREDENTIALS,
     RESPONSE_MSG_LOGIN_SUCCESS,
     RESPONSE_MSG_REGISTER_SUCCESS,
-    RESPONSE_MSG_INVALID_ROLE,
+    RESPONSE_MSG_REGISTRATION_FAILED,
 )
-from app.auth.schemas import UserLoginSchema, UserRegisterSchema, AuthResponseSchema
-from app.auth.service import login_user, register_user
+from app.auth.dtos import UserLoginPayloadDTO, UserRegisterPayloadDTO
+from app.auth.service import auth_service
 from app.constants import (
     RESPONSE_MSG_INTERNAL_ERROR,
     RESPONSE_MSG_MISSING_FIELDS,
@@ -37,47 +36,28 @@ class RegisterView(MethodView):
 
         Returns:
             201 with customToken and user data on success.
-            400 if required fields are missing or role is invalid.
+            400 if required fields are missing or invalid.
             409 if the email is already registered.
             500 on unexpected errors.
         """
-        body = request.get_json(silent=True) or {}
+        body = request.get_json() or {}
 
         try:
-            input_data = UserRegisterSchema(**body)
+            input_data = UserRegisterPayloadDTO.model_validate(body)
         except ValidationError as err:
             error_details = {str(e["loc"][0]): e["msg"] for e in err.errors()}
-
-            is_role_error = any(
-                e["loc"] == ("role",) and "value_error" in e["type"]
-                for e in err.errors()
-            )
-
-            msg = (
-                RESPONSE_MSG_INVALID_ROLE
-                if is_role_error
-                else RESPONSE_MSG_MISSING_FIELDS
-            )
-
             return json_response(
-                message=msg,
+                message=RESPONSE_MSG_MISSING_FIELDS,
                 errors=error_details,
                 status_code=HTTPStatus.BAD_REQUEST,
             )
 
         try:
-            raw_result = register_user(
-                email=input_data.email,
-                password=input_data.password,
-                display_name=input_data.displayName,
-                role=input_data.role,
-            )
-
-            output_data = AuthResponseSchema(**raw_result)
+            result = auth_service.register_user(input_data)
         except ValueError as exc:
             if FIREBASE_ERROR_EMAIL_EXISTS in str(exc):
                 return json_response(
-                    message=RESPONSE_MSG_EMAIL_EXISTS,
+                    message=RESPONSE_MSG_REGISTRATION_FAILED,
                     status_code=HTTPStatus.CONFLICT,
                 )
             return json_response(
@@ -92,7 +72,7 @@ class RegisterView(MethodView):
 
         return json_response(
             message=RESPONSE_MSG_REGISTER_SUCCESS,
-            data=output_data.model_dump(by_alias=True),
+            data=result.model_dump(by_alias=True),
             status_code=HTTPStatus.CREATED,
         )
 
@@ -115,10 +95,10 @@ class LoginView(MethodView):
             401 if credentials are wrong.
             500 on unexpected errors.
         """
-        body = request.get_json(silent=True) or {}
+        body = request.get_json() or {}
 
         try:
-            input_data = UserLoginSchema(**body)
+            input_data = UserLoginPayloadDTO.model_validate(body)
         except ValidationError as err:
             error_details = {str(e["loc"][0]): e["msg"] for e in err.errors()}
             return json_response(
@@ -128,10 +108,7 @@ class LoginView(MethodView):
             )
 
         try:
-            raw_result = login_user(
-                email=input_data.email, password=input_data.password
-            )
-            output_data = AuthResponseSchema(**raw_result)
+            result = auth_service.login_user(input_data)
         except ValueError:
             return json_response(
                 message=RESPONSE_MSG_INVALID_CREDENTIALS,
@@ -145,6 +122,6 @@ class LoginView(MethodView):
 
         return json_response(
             message=RESPONSE_MSG_LOGIN_SUCCESS,
-            data=output_data.model_dump(by_alias=True),
+            data=result.model_dump(by_alias=True),
             status_code=HTTPStatus.OK,
         )
