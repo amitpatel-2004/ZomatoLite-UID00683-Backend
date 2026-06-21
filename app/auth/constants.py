@@ -6,6 +6,8 @@ RESPONSE_MSG_REGISTER_SUCCESS = "User registered successfully."
 RESPONSE_MSG_LOGIN_SUCCESS = "Logged in successfully."
 RESPONSE_MSG_INVALID_CREDENTIALS = "Invalid email or password."
 RESPONSE_MSG_REGISTRATION_FAILED = "Unable to complete registration."
+RESPONSE_MSG_TOKEN_MISSING = "Authorization token is missing."
+RESPONSE_MSG_TOKEN_INVALID = "Authorization token is invalid or expired."
 
 FIREBASE_ERROR_EMAIL_EXISTS = "EMAIL_EXISTS"
 FIREBASE_ERROR_INVALID_PASSWORD = "INVALID_PASSWORD"

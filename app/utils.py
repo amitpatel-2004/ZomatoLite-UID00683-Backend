@@ -1,6 +1,11 @@
 from http import HTTPStatus
 from typing import Any
 from flask import jsonify, Response
+from pydantic import ValidationError
+
+
+def extract_validation_errors(err: ValidationError) -> dict:
+    return {str(e["loc"][0]): e["msg"] for e in err.errors()}
 
 
 def json_response(

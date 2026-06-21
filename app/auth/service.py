@@ -11,7 +11,13 @@ from app.auth.constants import (
     FIREBASE_ERROR_INVALID_LOGIN,
     FIREBASE_ERROR_INVALID_PASSWORD,
 )
-from app.auth.dtos import AuthResponseDTO, UserLoginPayloadDTO, UserProfileResponseDTO, UserRegisterPayloadDTO
+from app.auth.dtos import (
+    AuthResponseDTO,
+    UserLoginPayloadDTO,
+    UserProfileResponseDTO,
+    UserRegisterPayloadDTO,
+)
+from app.auth.exceptions import EmailAlreadyExistsError, InvalidCredentialsError
 from app.constants import (
     TOKEN_CLAIM_ROLE,
     FIREBASE_TIMEOUT_SECONDS,
@@ -47,7 +53,7 @@ class AuthService:
             An AuthResponseDTO with "customToken" and "user" fields for the client.
 
         Raises:
-            ValueError: If the email is already registered ("EMAIL_EXISTS").
+            EmailAlreadyExistsError: If the email is already registered.
             RuntimeError: If Firebase returns any other unexpected error.
         """
         try:
@@ -58,7 +64,7 @@ class AuthService:
             )
             uid = user_record.uid
         except auth.EmailAlreadyExistsError:
-            raise ValueError("EMAIL_EXISTS")
+            raise EmailAlreadyExistsError()
         except FirebaseError as e:
             raise RuntimeError(f"Firebase sign-up error: {str(e)}")
 
@@ -97,7 +103,7 @@ class AuthService:
             An AuthResponseDTO with "customToken" and "user" fields for the client.
 
         Raises:
-            ValueError: If the credentials are wrong ("INVALID_CREDENTIALS").
+            InvalidCredentialsError: If the credentials are wrong.
             RuntimeError: If Firebase returns any other unexpected error.
         """
         response = requests.post(
@@ -120,7 +126,7 @@ class AuthService:
                 FIREBASE_ERROR_INVALID_LOGIN,
             )
             if firebase_error in invalid_cred_errors:
-                raise ValueError("INVALID_CREDENTIALS")
+                raise InvalidCredentialsError()
             raise RuntimeError(f"Firebase sign-in error: {firebase_error}")
 
         uid: str = response_data["localId"]
@@ -144,6 +150,3 @@ class AuthService:
                 role=role,
             ),
         )
-
-
-auth_service = AuthService()

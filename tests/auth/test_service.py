@@ -3,8 +3,8 @@ import unittest.mock as mock
 from datetime import datetime
 
 from app.auth.dtos import UserLoginPayloadDTO, UserRegisterPayloadDTO
-from app.auth.service import auth_service
-from app.auth.constants import FIREBASE_ERROR_EMAIL_EXISTS
+from app.auth.exceptions import EmailAlreadyExistsError, InvalidCredentialsError
+from app.auth.service import AuthService
 from app.enums import UserRole
 from tests.auth.test_data import get_mock_firestore_user_doc
 
@@ -13,6 +13,8 @@ FAKE_CUSTOM_TOKEN = b"fake-custom-token-bytes"
 
 _FakeEmailAlreadyExistsError = type("EmailAlreadyExistsError", (Exception,), {})
 _FakeFirebaseError = type("FirebaseError", (Exception,), {})
+
+auth_service = AuthService()
 
 
 def _make_http_response(data: dict, ok: bool = True):
@@ -33,8 +35,8 @@ def _make_firestore_snapshot(data: dict | None):
 class TestRegisterUser(unittest.TestCase):
     """Unit tests for AuthService.register_user."""
 
-    def _run_register(self, mock_fs, mock_token, mock_create_user, role="customer"):
-        """Run register_user with all dependencies mocked to their happy-path values."""
+    def _run_register(self, mock_token, mock_create_user, role="customer"):
+        """Run register_user with happy-path mocks for Firebase Auth calls."""
         mock_create_user.return_value = mock.MagicMock(uid=FAKE_UID)
         mock_token.return_value = FAKE_CUSTOM_TOKEN
 
@@ -47,11 +49,10 @@ class TestRegisterUser(unittest.TestCase):
         return auth_service.register_user(payload)
 
     @mock.patch("app.auth.service.auth.create_custom_token")
-    @mock.patch("app.auth.service.FS_CLIENT")
     @mock.patch("app.auth.service.auth.create_user")
-    def test_returns_custom_token_and_user(self, mock_create_user, mock_fs, mock_token):
+    def test_returns_custom_token_and_user(self, mock_create_user, mock_token):
         """Successful registration must return a customToken and a user profile."""
-        result = self._run_register(mock_fs, mock_token, mock_create_user)
+        result = self._run_register(mock_token, mock_create_user)
 
         self.assertEqual(result.custom_token, FAKE_CUSTOM_TOKEN.decode("utf-8"))
         self.assertEqual(result.user.id, FAKE_UID)
@@ -65,7 +66,16 @@ class TestRegisterUser(unittest.TestCase):
         self, mock_create_user, mock_fs, mock_token
     ):
         """The user document saved to Firestore must contain all required fields."""
-        self._run_register(mock_fs, mock_token, mock_create_user, role="owner")
+        mock_create_user.return_value = mock.MagicMock(uid=FAKE_UID)
+        mock_token.return_value = FAKE_CUSTOM_TOKEN
+
+        payload = UserRegisterPayloadDTO(
+            email="user@example.com",
+            password="pass123",
+            display_name="Test User",
+            role=UserRole("owner"),
+        )
+        auth_service.register_user(payload)
 
         mock_doc = mock_fs.document.return_value
         mock_doc.set.assert_called_once()
@@ -77,13 +87,10 @@ class TestRegisterUser(unittest.TestCase):
         self.assertIsInstance(written["_createdAt"], datetime)
 
     @mock.patch("app.auth.service.auth.create_custom_token")
-    @mock.patch("app.auth.service.FS_CLIENT")
     @mock.patch("app.auth.service.auth.create_user")
-    def test_custom_token_minted_with_role_claim(
-        self, mock_create_user, mock_fs, mock_token
-    ):
+    def test_custom_token_minted_with_role_claim(self, mock_create_user, mock_token):
         """create_custom_token must be called with the correct uid and role claim."""
-        self._run_register(mock_fs, mock_token, mock_create_user, role="owner")
+        self._run_register(mock_token, mock_create_user, role="owner")
 
         mock_token.assert_called_once_with(
             FAKE_UID,
@@ -94,8 +101,8 @@ class TestRegisterUser(unittest.TestCase):
         "app.auth.service.auth.EmailAlreadyExistsError", _FakeEmailAlreadyExistsError
     )
     @mock.patch("app.auth.service.auth.create_user")
-    def test_email_already_exists_raises_value_error(self, mock_create_user):
-        """Firebase EmailAlreadyExistsError must be re-raised as ValueError."""
+    def test_email_already_exists_raises_custom_error(self, mock_create_user):
+        """Firebase EmailAlreadyExistsError must be re-raised as EmailAlreadyExistsError."""
         mock_create_user.side_effect = _FakeEmailAlreadyExistsError("email taken")
 
         payload = UserRegisterPayloadDTO(
@@ -104,10 +111,8 @@ class TestRegisterUser(unittest.TestCase):
             display_name="Name",
             role=UserRole.CUSTOMER,
         )
-        with self.assertRaises(ValueError) as ctx:
+        with self.assertRaises(EmailAlreadyExistsError):
             auth_service.register_user(payload)
-
-        self.assertIn(FIREBASE_ERROR_EMAIL_EXISTS, str(ctx.exception))
 
     @mock.patch("app.auth.service.FirebaseError", _FakeFirebaseError)
     @mock.patch(
@@ -193,27 +198,27 @@ class TestLoginUser(unittest.TestCase):
         self.assertEqual(result.user.role, "customer")
 
     @mock.patch("app.auth.service.requests.post")
-    def test_invalid_password_raises_value_error(self, mock_post):
-        """Firebase INVALID_PASSWORD error must raise ValueError."""
+    def test_invalid_password_raises_custom_error(self, mock_post):
+        """Firebase INVALID_PASSWORD error must raise InvalidCredentialsError."""
         mock_post.return_value = _make_http_response(
             {"error": {"message": "INVALID_PASSWORD"}},
             ok=False,
         )
 
         payload = UserLoginPayloadDTO(email="user@example.com", password="wrongpass")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(InvalidCredentialsError):
             auth_service.login_user(payload)
 
     @mock.patch("app.auth.service.requests.post")
-    def test_email_not_found_raises_value_error(self, mock_post):
-        """Firebase EMAIL_NOT_FOUND error must also raise ValueError."""
+    def test_email_not_found_raises_custom_error(self, mock_post):
+        """Firebase EMAIL_NOT_FOUND error must also raise InvalidCredentialsError."""
         mock_post.return_value = _make_http_response(
             {"error": {"message": "EMAIL_NOT_FOUND"}},
             ok=False,
         )
 
         payload = UserLoginPayloadDTO(email="ghost@example.com", password="pass123")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(InvalidCredentialsError):
             auth_service.login_user(payload)
 
     @mock.patch("app.auth.service.requests.post")

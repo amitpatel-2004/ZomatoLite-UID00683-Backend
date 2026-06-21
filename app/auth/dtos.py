@@ -2,10 +2,10 @@ from typing import Annotated
 from pydantic import EmailStr, Field, StringConstraints
 
 from app.enums import UserRole
-from app.dtos import CamelCaseBaseDTO
+from app.dtos import BaseDTO
 
 
-class UserLoginPayloadDTO(CamelCaseBaseDTO):
+class UserLoginPayloadDTO(BaseDTO):
     """Shared base DTO for authentication credentials."""
 
     email: EmailStr = Field(max_length=255)
@@ -24,7 +24,7 @@ class UserRegisterPayloadDTO(UserLoginPayloadDTO):
     role: UserRole
 
 
-class UserProfileResponseDTO(CamelCaseBaseDTO):
+class UserProfileResponseDTO(BaseDTO):
     """Defines what user profile details are allowed in output."""
 
     id: str = Field(alias="_id")
@@ -33,7 +33,7 @@ class UserProfileResponseDTO(CamelCaseBaseDTO):
     role: str
 
 
-class AuthResponseDTO(CamelCaseBaseDTO):
+class AuthResponseDTO(BaseDTO):
     """The standardized output for successful authentication."""
 
     custom_token: str

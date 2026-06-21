@@ -5,11 +5,11 @@ from http import HTTPStatus
 from flask import g
 
 from app import create_app
-from app.constants import (
-    RESPONSE_MSG_FORBIDDEN,
+from app.auth.constants import (
     RESPONSE_MSG_TOKEN_INVALID,
     RESPONSE_MSG_TOKEN_MISSING,
 )
+from app.constants import RESPONSE_MSG_FORBIDDEN
 from app.auth.middleware import require_auth, require_role
 
 

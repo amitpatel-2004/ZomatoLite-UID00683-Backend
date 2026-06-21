@@ -5,10 +5,12 @@ from typing import Callable, Optional
 from firebase_admin import auth
 from flask import g, request
 
-from app.constants import (
-    RESPONSE_MSG_FORBIDDEN,
+from app.auth.constants import (
     RESPONSE_MSG_TOKEN_INVALID,
     RESPONSE_MSG_TOKEN_MISSING,
+)
+from app.constants import (
+    RESPONSE_MSG_FORBIDDEN,
     TOKEN_CLAIM_ROLE,
 )
 from app.utils import json_response

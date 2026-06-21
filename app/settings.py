@@ -16,9 +16,10 @@ def _init_firebase() -> firebase_admin.App:
     return firebase_admin.get_app()
 
 
-_ALLOWED_ORIGINS_STRING = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080")
 ALLOWED_ORIGINS = [
-    origin.strip() for origin in _ALLOWED_ORIGINS_STRING.split(",") if origin.strip()
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:8080").split(",")
+    if origin.strip()
 ]
 FIREBASE_APP = _init_firebase()
 FS_CLIENT = firestore.client()
