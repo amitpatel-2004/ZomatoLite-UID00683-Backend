@@ -16,6 +16,7 @@ setattr(fake_settings, "FS_CLIENT", mock.MagicMock())
 setattr(fake_settings, "FIRESTORE_EMULATOR_HOST", "127.0.0.1:8080")
 setattr(fake_settings, "FIREBASE_AUTH_EMULATOR_HOST", "127.0.0.1:9099")
 setattr(fake_settings, "FIREBASE_WEB_API_KEY", "fake-key")
+setattr(fake_settings, "GCS_BUCKET_NAME", "fake-bucket")
 setattr(fake_settings, "ALLOWED_ORIGINS", ["http://localhost:8080"])
 setattr(fake_settings, "FIREBASE_APP", mock.MagicMock())
 sys.modules["app.settings"] = fake_settings

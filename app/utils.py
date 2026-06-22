@@ -1,11 +1,28 @@
 from http import HTTPStatus
 from typing import Any
-from flask import jsonify, Response
+from flask import Request, jsonify, Response
 from pydantic import ValidationError
+from datetime import timedelta
+from google.cloud import storage
+
+from app.settings import GCS_BUCKET_NAME
 
 
 def extract_validation_errors(err: ValidationError) -> dict:
     return {str(e["loc"][0]): e["msg"] for e in err.errors()}
+
+
+def parse_pagination_params(request: Request) -> tuple[int, int]:
+    """Get page and limit from query params."""
+    page = max(int(request.args.get("page", 1)), 1)
+    limit = min(int(request.args.get("limit", 20)), 50)
+    return page, limit
+
+
+def build_paginated_response(items: list, page: int, limit: int) -> dict[str, Any]:
+    """Trim items list to limit and determine if more pages exist."""
+    has_more = len(items) > limit
+    return {"items": items[:limit], "page": page, "hasMore": has_more}
 
 
 def json_response(
@@ -34,3 +51,18 @@ def json_response(
         response_body["errors"] = errors
 
     return jsonify(response_body), status_code
+
+
+def generate_signed_upload_url(
+    object_path: str, content_type: str, expiry_minutes: int = 15
+) -> str:
+    """Generate a signed URL for client-side upload."""
+    client = storage.Client()
+    bucket = client.bucket(GCS_BUCKET_NAME)
+    blob = bucket.blob(object_path)
+    return blob.generate_signed_url(
+        expiration=timedelta(minutes=expiry_minutes),
+        method="PUT",
+        content_type=content_type,
+        version="v4",
+    )

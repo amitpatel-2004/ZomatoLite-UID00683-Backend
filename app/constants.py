@@ -2,6 +2,8 @@ FIREBASE_TIMEOUT_SECONDS = 10
 
 TOKEN_CLAIM_ROLE = "role"
 
+MAX_IMAGE_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024
+
 RESPONSE_MSG_HEALTH_OK = "OK"
 RESPONSE_MSG_MISSING_FIELDS = "Required fields are missing."
 RESPONSE_MSG_FORBIDDEN = "You do not have permission to access this resource."

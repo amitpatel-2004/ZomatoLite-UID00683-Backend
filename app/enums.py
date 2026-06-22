@@ -21,3 +21,28 @@ class FirestoreCollections(str, Enum):
     RESTAURANTS = "restaurants"
     ORDERS = "orders"
     MENU_ITEMS = "menuItems"
+
+
+class RestaurantStatus(str, Enum):
+    """Possible states for a restaurant."""
+
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    DELETED = "deleted"
+
+
+class MenuItemStatus(str, Enum):
+    """Possible states for a menu item."""
+
+    AVAILABLE = "available"
+    UNAVAILABLE = "unavailable"
+    DELETED = "deleted"
+
+
+class CuisineType(str, Enum):
+    """Allowed cuisine categories for a restaurant."""
+
+    INDIAN = "indian"
+    CHINESE = "chinese"
+    ITALIAN = "italian"
+    OTHER = "other"
