@@ -23,7 +23,6 @@ def get_valid_create_menu_item_payload() -> dict:
         "description": "Creamy tomato curry",
         "price": 299.0,
         "isVeg": False,
-        "isAvailable": True,
     }
 
 
@@ -65,7 +64,6 @@ def get_mock_menu_item_response() -> MenuItemResponseDTO:
         description="Creamy tomato curry",
         price=299.0,
         is_veg=False,
-        is_available=True,
         image_path=None,
         rating=0.0,
         status="available",

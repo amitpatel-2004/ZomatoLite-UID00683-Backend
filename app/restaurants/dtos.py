@@ -3,7 +3,7 @@ from typing import Annotated, Optional
 from pydantic import Field, StringConstraints
 
 from app.dtos import BaseDTO
-from app.enums import CuisineType, RestaurantStatus
+from app.enums import CuisineType, MenuItemStatus, RestaurantStatus
 
 
 class CreateRestaurantPayloadDTO(BaseDTO):
@@ -44,8 +44,8 @@ class CreateMenuItemPayloadDTO(BaseDTO):
     description: str = ""
     price: float = Field(gt=0)
     is_veg: bool
+    status: MenuItemStatus = MenuItemStatus.AVAILABLE
     image_path: Optional[str] = None
-    is_available: bool = True
 
 
 class UpdateMenuItemPayloadDTO(BaseDTO):
@@ -59,8 +59,8 @@ class UpdateMenuItemPayloadDTO(BaseDTO):
     description: Optional[str] = None
     price: Optional[float] = Field(default=None, gt=0)
     is_veg: Optional[bool] = None
+    status: Optional[MenuItemStatus] = None
     image_path: Optional[str] = None
-    is_available: Optional[bool] = None
 
 
 class RestaurantResponseDTO(BaseDTO):
@@ -84,7 +84,6 @@ class MenuItemResponseDTO(BaseDTO):
     description: str
     price: float
     is_veg: bool
-    is_available: bool
     image_path: Optional[str]
     rating: float
     status: str

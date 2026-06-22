@@ -75,7 +75,6 @@ class RestaurantService:
             description=data.get("description", ""),
             price=data["price"],
             is_veg=data.get("isVeg", False),
-            is_available=data.get("isAvailable", True),
             image_path=data.get("imagePath"),
             rating=data.get("rating", 0.0),
             status=data.get("status", MenuItemStatus.AVAILABLE.value),
@@ -228,10 +227,9 @@ class RestaurantService:
             "description": payload.description,
             "price": payload.price,
             "isVeg": payload.is_veg,
-            "isAvailable": payload.is_available,
             "imagePath": payload.image_path,
             "rating": 0.0,
-            "status": MenuItemStatus.AVAILABLE.value,
+            "status": payload.status.value,
             "_createdAt": _now(),
             "_updatedAt": _now(),
         }
@@ -312,8 +310,8 @@ class RestaurantService:
             updates["isVeg"] = payload.is_veg
         if payload.image_path is not None:
             updates["imagePath"] = payload.image_path
-        if payload.is_available is not None:
-            updates["isAvailable"] = payload.is_available
+        if payload.status is not None:
+            updates["status"] = payload.status.value
 
         self._menu_item_ref(restaurant_id, item_id).update(updates)
         data.update(updates)
