@@ -20,9 +20,6 @@ from app.constants import (
 from app.utils import extract_validation_errors, json_response
 
 
-auth_service = AuthService()
-
-
 class RegisterView(MethodView):
     """
     Handles POST /auth/register — creates a new user account.
@@ -49,7 +46,7 @@ class RegisterView(MethodView):
             )
 
         try:
-            result = auth_service.register_user(input_data)
+            result = AuthService().register_user(input_data)
         except EmailAlreadyExistsError:
             return json_response(
                 message=RESPONSE_MSG_REGISTRATION_FAILED,
@@ -94,7 +91,7 @@ class LoginView(MethodView):
             )
 
         try:
-            result = auth_service.login_user(input_data)
+            result = AuthService().login_user(input_data)
         except InvalidCredentialsError:
             return json_response(
                 message=RESPONSE_MSG_INVALID_CREDENTIALS,

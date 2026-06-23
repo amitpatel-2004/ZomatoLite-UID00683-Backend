@@ -76,8 +76,7 @@ class TestRequireAuth(unittest.TestCase):
 
         _, body = self._get(headers={"Authorization": "Bearer good-token"})
 
-        self.assertEqual(body["uid"], "user-abc")
-        self.assertEqual(body["role"], "owner")
+        self.assertEqual(body, {"uid": "user-abc", "role": "owner"})
 
     @mock.patch("app.auth.middleware.auth.verify_id_token")
     def test_token_without_role_claim_defaults_to_customer(self, mock_verify):
@@ -86,7 +85,7 @@ class TestRequireAuth(unittest.TestCase):
 
         _, body = self._get(headers={"Authorization": "Bearer good-token"})
 
-        self.assertEqual(body["role"], "customer")
+        self.assertEqual(body, {"uid": "user-xyz", "role": "customer"})
 
 
 class TestRequireRole(unittest.TestCase):
