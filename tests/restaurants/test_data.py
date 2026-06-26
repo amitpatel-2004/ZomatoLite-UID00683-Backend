@@ -32,6 +32,7 @@ def get_mock_firestore_restaurant_doc(owner_uid: str = "owner-uid-123") -> dict:
         "_id": "rest-123",
         "ownerId": owner_uid,
         "name": "Test Restaurant",
+        "description": "",
         "cuisineTypes": ["indian"],
         "openingTime": "09:00",
         "closingTime": "22:00",
@@ -48,6 +49,7 @@ def get_mock_restaurant_response(owner_uid: str = "owner-uid-123") -> Restaurant
         _id="rest-123",
         owner_id=owner_uid,
         name="Test Restaurant",
+        description="",
         cuisine_types=["indian"],
         rating=0.0,
         status="active",
@@ -66,5 +68,5 @@ def get_mock_menu_item_response() -> MenuItemResponseDTO:
         is_veg=False,
         image_path=None,
         rating=0.0,
-        status="available",
+        quantity=None,
     )

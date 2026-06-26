@@ -18,6 +18,19 @@ from app.restaurants.dtos import (
     UpdateMenuItemPayloadDTO,
     UpdateRestaurantPayloadDTO,
 )
+from app.restaurants.constants import (
+    RESPONSE_MSG_MENU_ITEM_ADDED,
+    RESPONSE_MSG_MENU_ITEM_DELETED,
+    RESPONSE_MSG_MENU_ITEM_NOT_FOUND,
+    RESPONSE_MSG_MENU_ITEM_UPDATED,
+    RESPONSE_MSG_MENU_ITEMS_FETCHED,
+    RESPONSE_MSG_RESTAURANT_CREATED,
+    RESPONSE_MSG_RESTAURANT_DELETED,
+    RESPONSE_MSG_RESTAURANT_NOT_FOUND,
+    RESPONSE_MSG_RESTAURANT_UPDATED,
+    RESPONSE_MSG_RESTAURANTS_FETCHED,
+    RESPONSE_MSG_UPLOAD_URL_GENERATED,
+)
 from app.restaurants.exceptions import (
     MenuItemNotFoundError,
     NotRestaurantOwnerError,
@@ -26,11 +39,11 @@ from app.restaurants.exceptions import (
 from app.restaurants.service import RestaurantService
 from app.utils import extract_validation_errors, json_response, parse_pagination_params
 
-restaurant_service = RestaurantService()
-
 
 class RestaurantListView(MethodView):
     """Handles GET /restaurants — browse all active restaurants."""
+
+    decorators = [require_auth]
 
     def get(self) -> tuple[Response, HTTPStatus]:
         """Return paginated list of active restaurants.
@@ -38,10 +51,10 @@ class RestaurantListView(MethodView):
         Returns:
             200 with paginated restaurant list.
         """
-        page, limit = parse_pagination_params(request)
-        result = restaurant_service.list_restaurants(page, limit)
+        after, limit = parse_pagination_params(request)
+        result = RestaurantService().list_restaurants(after, limit)
         return json_response(
-            message="Restaurants fetched successfully.",
+            message=RESPONSE_MSG_RESTAURANTS_FETCHED,
             data=result,
         )
 
@@ -71,7 +84,7 @@ class RestaurantCreateView(MethodView):
             )
 
         try:
-            result = restaurant_service.create_restaurant(g.uid, payload)
+            result = RestaurantService().create_restaurant(g.uid, payload)
         except Exception:
             return json_response(
                 message=RESPONSE_MSG_INTERNAL_ERROR,
@@ -79,7 +92,7 @@ class RestaurantCreateView(MethodView):
             )
 
         return json_response(
-            message="Restaurant created successfully.",
+            message=RESPONSE_MSG_RESTAURANT_CREATED,
             data=result.model_dump(by_alias=True),
             status_code=HTTPStatus.CREATED,
         )
@@ -97,16 +110,18 @@ class MyRestaurantsView(MethodView):
             200 with paginated restaurant list.
             403 if caller is not an owner.
         """
-        page, limit = parse_pagination_params(request)
-        result = restaurant_service.list_owner_restaurants(g.uid, page, limit)
+        after, limit = parse_pagination_params(request)
+        result = RestaurantService().list_owner_restaurants(g.uid, after, limit)
         return json_response(
-            message="Restaurants fetched successfully.",
+            message=RESPONSE_MSG_RESTAURANTS_FETCHED,
             data=result,
         )
 
 
 class RestaurantDetailView(MethodView):
     """Handles GET /restaurants/<restaurant_id> — public restaurant detail."""
+
+    decorators = [require_auth]
 
     def get(self, restaurant_id: str) -> tuple[Response, HTTPStatus]:
         """Return a single restaurant by ID.
@@ -117,10 +132,10 @@ class RestaurantDetailView(MethodView):
             500 on unexpected errors.
         """
         try:
-            result = restaurant_service.get_restaurant(restaurant_id)
+            result = RestaurantService().get_restaurant(restaurant_id)
         except RestaurantNotFoundError:
             return json_response(
-                message="Restaurant not found.",
+                message=RESPONSE_MSG_RESTAURANT_NOT_FOUND,
                 status_code=HTTPStatus.NOT_FOUND,
             )
         except Exception:
@@ -130,7 +145,7 @@ class RestaurantDetailView(MethodView):
             )
 
         return json_response(
-            message="Restaurants fetched successfully.",
+            message=RESPONSE_MSG_RESTAURANTS_FETCHED,
             data=result.model_dump(by_alias=True),
         )
 
@@ -161,10 +176,12 @@ class RestaurantUpdateView(MethodView):
             )
 
         try:
-            result = restaurant_service.update_restaurant(g.uid, restaurant_id, payload)
+            result = RestaurantService().update_restaurant(
+                g.uid, restaurant_id, payload
+            )
         except RestaurantNotFoundError:
             return json_response(
-                message="Restaurant not found.",
+                message=RESPONSE_MSG_RESTAURANT_NOT_FOUND,
                 status_code=HTTPStatus.NOT_FOUND,
             )
         except NotRestaurantOwnerError:
@@ -179,7 +196,7 @@ class RestaurantUpdateView(MethodView):
             )
 
         return json_response(
-            message="Restaurant updated successfully.",
+            message=RESPONSE_MSG_RESTAURANT_UPDATED,
             data=result.model_dump(by_alias=True),
         )
 
@@ -199,10 +216,10 @@ class RestaurantDeleteView(MethodView):
             500 on unexpected errors.
         """
         try:
-            restaurant_service.delete_restaurant(g.uid, restaurant_id)
+            RestaurantService().delete_restaurant(g.uid, restaurant_id)
         except RestaurantNotFoundError:
             return json_response(
-                message="Restaurant not found.",
+                message=RESPONSE_MSG_RESTAURANT_NOT_FOUND,
                 status_code=HTTPStatus.NOT_FOUND,
             )
         except NotRestaurantOwnerError:
@@ -216,11 +233,13 @@ class RestaurantDeleteView(MethodView):
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
 
-        return json_response(message="Restaurant deleted successfully.")
+        return json_response(message=RESPONSE_MSG_RESTAURANT_DELETED)
 
 
 class MenuItemListView(MethodView):
     """Handles GET /restaurants/<restaurant_id>/menu-items — public menu listing."""
+
+    decorators = [require_auth]
 
     def get(self, restaurant_id: str) -> tuple[Response, HTTPStatus]:
         """Return paginated non-deleted menu items for a restaurant.
@@ -230,12 +249,12 @@ class MenuItemListView(MethodView):
             404 if restaurant not found or deleted.
             500 on unexpected errors.
         """
-        page, limit = parse_pagination_params(request)
+        after, limit = parse_pagination_params(request)
         try:
-            result = restaurant_service.list_menu_items(restaurant_id, page, limit)
+            result = RestaurantService().list_menu_items(restaurant_id, after, limit)
         except RestaurantNotFoundError:
             return json_response(
-                message="Restaurant not found.",
+                message=RESPONSE_MSG_RESTAURANT_NOT_FOUND,
                 status_code=HTTPStatus.NOT_FOUND,
             )
         except Exception:
@@ -245,7 +264,7 @@ class MenuItemListView(MethodView):
             )
 
         return json_response(
-            message="Menu items fetched successfully.",
+            message=RESPONSE_MSG_MENU_ITEMS_FETCHED,
             data=result,
         )
 
@@ -276,10 +295,10 @@ class MenuItemCreateView(MethodView):
             )
 
         try:
-            result = restaurant_service.add_menu_item(g.uid, restaurant_id, payload)
+            result = RestaurantService().add_menu_item(g.uid, restaurant_id, payload)
         except RestaurantNotFoundError:
             return json_response(
-                message="Restaurant not found.",
+                message=RESPONSE_MSG_RESTAURANT_NOT_FOUND,
                 status_code=HTTPStatus.NOT_FOUND,
             )
         except NotRestaurantOwnerError:
@@ -294,7 +313,7 @@ class MenuItemCreateView(MethodView):
             )
 
         return json_response(
-            message="Menu item added successfully.",
+            message=RESPONSE_MSG_MENU_ITEM_ADDED,
             data=result.model_dump(by_alias=True),
             status_code=HTTPStatus.CREATED,
         )
@@ -302,6 +321,8 @@ class MenuItemCreateView(MethodView):
 
 class MenuItemDetailView(MethodView):
     """Handles GET /restaurants/<restaurant_id>/menu-items/<item_id> — public."""
+
+    decorators = [require_auth]
 
     def get(self, restaurant_id: str, item_id: str) -> tuple[Response, HTTPStatus]:
         """Return a single menu item.
@@ -312,10 +333,10 @@ class MenuItemDetailView(MethodView):
             500 on unexpected errors.
         """
         try:
-            result = restaurant_service.get_menu_item(restaurant_id, item_id)
+            result = RestaurantService().get_menu_item(restaurant_id, item_id)
         except (RestaurantNotFoundError, MenuItemNotFoundError):
             return json_response(
-                message="Menu item not found.",
+                message=RESPONSE_MSG_MENU_ITEM_NOT_FOUND,
                 status_code=HTTPStatus.NOT_FOUND,
             )
         except Exception:
@@ -325,7 +346,7 @@ class MenuItemDetailView(MethodView):
             )
 
         return json_response(
-            message="Menu items fetched successfully.",
+            message=RESPONSE_MSG_MENU_ITEMS_FETCHED,
             data=result.model_dump(by_alias=True),
         )
 
@@ -356,12 +377,12 @@ class MenuItemUpdateView(MethodView):
             )
 
         try:
-            result = restaurant_service.update_menu_item(
+            result = RestaurantService().update_menu_item(
                 g.uid, restaurant_id, item_id, payload
             )
         except RestaurantNotFoundError:
             return json_response(
-                message="Restaurant not found.",
+                message=RESPONSE_MSG_RESTAURANT_NOT_FOUND,
                 status_code=HTTPStatus.NOT_FOUND,
             )
         except NotRestaurantOwnerError:
@@ -371,7 +392,7 @@ class MenuItemUpdateView(MethodView):
             )
         except MenuItemNotFoundError:
             return json_response(
-                message="Menu item not found.",
+                message=RESPONSE_MSG_MENU_ITEM_NOT_FOUND,
                 status_code=HTTPStatus.NOT_FOUND,
             )
         except Exception:
@@ -381,7 +402,7 @@ class MenuItemUpdateView(MethodView):
             )
 
         return json_response(
-            message="Menu item updated successfully.",
+            message=RESPONSE_MSG_MENU_ITEM_UPDATED,
             data=result.model_dump(by_alias=True),
         )
 
@@ -401,10 +422,10 @@ class MenuItemDeleteView(MethodView):
             500 on unexpected errors.
         """
         try:
-            restaurant_service.delete_menu_item(g.uid, restaurant_id, item_id)
+            RestaurantService().delete_menu_item(g.uid, restaurant_id, item_id)
         except RestaurantNotFoundError:
             return json_response(
-                message="Restaurant not found.",
+                message=RESPONSE_MSG_RESTAURANT_NOT_FOUND,
                 status_code=HTTPStatus.NOT_FOUND,
             )
         except NotRestaurantOwnerError:
@@ -414,7 +435,7 @@ class MenuItemDeleteView(MethodView):
             )
         except MenuItemNotFoundError:
             return json_response(
-                message="Menu item not found.",
+                message=RESPONSE_MSG_MENU_ITEM_NOT_FOUND,
                 status_code=HTTPStatus.NOT_FOUND,
             )
         except Exception:
@@ -423,7 +444,7 @@ class MenuItemDeleteView(MethodView):
                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             )
 
-        return json_response(message="Menu item deleted successfully.")
+        return json_response(message=RESPONSE_MSG_MENU_ITEM_DELETED)
 
 
 class MenuItemUploadUrlView(MethodView):
@@ -458,12 +479,12 @@ class MenuItemUploadUrlView(MethodView):
             )
 
         try:
-            result = restaurant_service.generate_menu_item_upload_url(
+            result = RestaurantService().generate_menu_item_upload_url(
                 g.uid, restaurant_id, payload.file_name, payload.content_type
             )
         except RestaurantNotFoundError:
             return json_response(
-                message="Restaurant not found.",
+                message=RESPONSE_MSG_RESTAURANT_NOT_FOUND,
                 status_code=HTTPStatus.NOT_FOUND,
             )
         except NotRestaurantOwnerError:
@@ -478,6 +499,6 @@ class MenuItemUploadUrlView(MethodView):
             )
 
         return json_response(
-            message="Upload URL generated successfully.",
+            message=RESPONSE_MSG_UPLOAD_URL_GENERATED,
             data=result.model_dump(by_alias=True),
         )

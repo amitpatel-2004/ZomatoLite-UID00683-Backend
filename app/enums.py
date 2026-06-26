@@ -31,13 +31,6 @@ class RestaurantStatus(str, Enum):
     DELETED = "deleted"
 
 
-class MenuItemStatus(str, Enum):
-    """Possible states for a menu item."""
-
-    AVAILABLE = "available"
-    UNAVAILABLE = "unavailable"
-    DELETED = "deleted"
-
 
 class CuisineType(str, Enum):
     """Allowed cuisine categories for a restaurant."""

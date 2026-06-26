@@ -3,7 +3,7 @@ from typing import Annotated, Optional
 from pydantic import Field, StringConstraints
 
 from app.dtos import BaseDTO
-from app.enums import CuisineType, MenuItemStatus, RestaurantStatus
+from app.enums import CuisineType, RestaurantStatus
 
 
 class CreateRestaurantPayloadDTO(BaseDTO):
@@ -12,6 +12,7 @@ class CreateRestaurantPayloadDTO(BaseDTO):
     name: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
     ]
+    description: str = ""
     cuisine_types: list[CuisineType] = Field(min_length=1)
     opening_time: Annotated[str, StringConstraints(pattern=r"^\d{2}:\d{2}$")]
     closing_time: Annotated[str, StringConstraints(pattern=r"^\d{2}:\d{2}$")]
@@ -25,12 +26,13 @@ class UpdateRestaurantPayloadDTO(BaseDTO):
             str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
         ]
     ] = None
+    description: Optional[str] = None
     cuisine_types: Optional[list[CuisineType]] = None
     opening_time: Optional[
-        Annotated[str, StringConstraints(pattern=r"^\d{2}:\d{2}$")]
+        Annotated[str, StringConstraints(pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")]
     ] = None
     closing_time: Optional[
-        Annotated[str, StringConstraints(pattern=r"^\d{2}:\d{2}$")]
+        Annotated[str, StringConstraints(pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")]
     ] = None
     status: Optional[RestaurantStatus] = None
 
@@ -44,7 +46,7 @@ class CreateMenuItemPayloadDTO(BaseDTO):
     description: str = ""
     price: float = Field(gt=0)
     is_veg: bool
-    status: MenuItemStatus = MenuItemStatus.AVAILABLE
+    quantity: Optional[int] = Field(default=None, ge=0)
     image_path: Optional[str] = None
 
 
@@ -59,7 +61,7 @@ class UpdateMenuItemPayloadDTO(BaseDTO):
     description: Optional[str] = None
     price: Optional[float] = Field(default=None, gt=0)
     is_veg: Optional[bool] = None
-    status: Optional[MenuItemStatus] = None
+    quantity: Optional[int] = Field(default=None, ge=0)
     image_path: Optional[str] = None
 
 
@@ -69,6 +71,7 @@ class RestaurantResponseDTO(BaseDTO):
     id: str = Field(alias="_id")
     owner_id: str
     name: str
+    description: str
     cuisine_types: list[str]
     rating: float
     status: str
@@ -86,7 +89,7 @@ class MenuItemResponseDTO(BaseDTO):
     is_veg: bool
     image_path: Optional[str]
     rating: float
-    status: str
+    quantity: Optional[int] = None
 
 
 class UploadUrlResponseDTO(BaseDTO):

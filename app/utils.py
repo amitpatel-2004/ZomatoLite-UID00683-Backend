@@ -1,9 +1,10 @@
+from datetime import timedelta
 from http import HTTPStatus
 from typing import Any
-from flask import Request, jsonify, Response
-from pydantic import ValidationError
-from datetime import timedelta
+
+from flask import Request, Response, jsonify
 from google.cloud import storage
+from pydantic import ValidationError
 
 from app.settings import GCS_BUCKET_NAME
 
@@ -12,17 +13,24 @@ def extract_validation_errors(err: ValidationError) -> dict:
     return {str(e["loc"][0]): e["msg"] for e in err.errors()}
 
 
-def parse_pagination_params(request: Request) -> tuple[int, int]:
-    """Get page and limit from query params."""
-    page = max(int(request.args.get("page", 1)), 1)
-    limit = min(int(request.args.get("limit", 20)), 50)
-    return page, limit
+def parse_pagination_params(request: Request) -> tuple[str | None, int]:
+    """Get after cursor and limit from query params."""
+    after = request.args.get("after", None)
+    try:
+        limit = int(request.args.get("limit", 20))
+    except (TypeError, ValueError):
+        limit = 20
+    limit = max(1, min(limit, 50))
+    return after, limit
 
 
-def build_paginated_response(items: list, page: int, limit: int) -> dict[str, Any]:
-    """Trim items list to limit and determine if more pages exist."""
-    has_more = len(items) > limit
-    return {"items": items[:limit], "page": page, "hasMore": has_more}
+def build_paginated_response(items: list, next_cursor: str | None) -> dict[str, Any]:
+    """Format the results into standardardized payload containing cursor metadata."""
+    return {
+        "items": items,
+        "nextCursor": next_cursor,
+        "hasMore": next_cursor is not None,
+    }
 
 
 def json_response(
