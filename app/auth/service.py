@@ -13,6 +13,7 @@ from app.auth.constants import (
 )
 from app.auth.dtos import (
     AuthResponseDTO,
+    CurrencyDTO,
     UserLoginPayloadDTO,
     UserProfileResponseDTO,
     UserRegisterPayloadDTO,
@@ -20,6 +21,8 @@ from app.auth.dtos import (
 from app.auth.exceptions import EmailAlreadyExistsError, InvalidCredentialsError
 from app.constants import (
     TOKEN_CLAIM_ROLE,
+    DEFAULT_BALANCE,
+    DEFAULT_CURRENCY,
     FIREBASE_TIMEOUT_SECONDS,
 )
 from app.enums import FirestoreCollections
@@ -68,13 +71,17 @@ class AuthService:
         except FirebaseError as e:
             raise RuntimeError(f"Firebase sign-up error: {str(e)}")
 
+        now = datetime.now(ZoneInfo("UTC"))
         FS_CLIENT.document(f"{FirestoreCollections.USERS}/{uid}").set(
             {
                 "_id": uid,
                 "email": payload.email,
                 "displayName": payload.display_name,
                 "role": payload.role,
-                "_createdAt": datetime.now(ZoneInfo("UTC")),
+                "balance": DEFAULT_BALANCE,
+                "currency": DEFAULT_CURRENCY,
+                "_createdAt": now,
+                "_updatedAt": now,
             }
         )
 
@@ -90,6 +97,8 @@ class AuthService:
                 email=payload.email,
                 display_name=payload.display_name,
                 role=payload.role,
+                balance=DEFAULT_BALANCE,
+                currency=CurrencyDTO(**DEFAULT_CURRENCY),
             ),
         )
 
@@ -135,6 +144,10 @@ class AuthService:
         user_data = user_snapshot.to_dict() or {}
         role: str = user_data.get("role", "customer")
         display_name: str = user_data.get("displayName", "")
+        balance: float = user_data.get("balance", DEFAULT_BALANCE)
+        currency: CurrencyDTO = CurrencyDTO(
+            **user_data.get("currency", DEFAULT_CURRENCY)
+        )
 
         custom_token: bytes = auth.create_custom_token(
             uid,
@@ -148,5 +161,7 @@ class AuthService:
                 email=payload.email,
                 display_name=display_name,
                 role=role,
+                balance=balance,
+                currency=currency,
             ),
         )

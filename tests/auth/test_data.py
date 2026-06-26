@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+
+
 def get_valid_register_payload() -> dict:
     """Return a fresh copy of a valid registration request body."""
     return {
@@ -23,4 +26,8 @@ def get_mock_firestore_user_doc() -> dict:
         "email": "test@example.com",
         "displayName": "Test User",
         "role": "customer",
+        "balance": 1000,
+        "currency": {"code": "INR", "symbol": "₹"},
+        "_createdAt": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        "_updatedAt": datetime(2026, 1, 1, tzinfo=timezone.utc),
     }
