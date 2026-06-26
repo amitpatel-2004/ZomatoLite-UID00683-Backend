@@ -2,7 +2,7 @@ from typing import Annotated
 from pydantic import EmailStr, Field, StringConstraints
 
 from app.enums import UserRole
-from app.dtos import BaseDTO
+from app.dtos import BaseDTO, CurrencyDTO
 
 
 class UserLoginPayloadDTO(BaseDTO):
@@ -22,13 +22,6 @@ class UserRegisterPayloadDTO(UserLoginPayloadDTO):
         ),
     ]
     role: UserRole
-
-
-class CurrencyDTO(BaseDTO):
-    """Represents a currency with its code and symbol."""
-
-    code: str
-    symbol: str
 
 
 class UserProfileResponseDTO(BaseDTO):

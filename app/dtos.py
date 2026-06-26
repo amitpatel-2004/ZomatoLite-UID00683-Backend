@@ -8,6 +8,13 @@ class BaseDTO(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
+class CurrencyDTO(BaseDTO):
+    """Represents a currency with its code and symbol."""
+
+    code: str
+    symbol: str
+
+
 class UploadUrlRequestDTO(BaseDTO):
     """DTO for requesting signed upload URL."""
 

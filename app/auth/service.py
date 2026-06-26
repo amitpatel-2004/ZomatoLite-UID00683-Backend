@@ -13,11 +13,11 @@ from app.auth.constants import (
 )
 from app.auth.dtos import (
     AuthResponseDTO,
-    CurrencyDTO,
     UserLoginPayloadDTO,
     UserProfileResponseDTO,
     UserRegisterPayloadDTO,
 )
+from app.dtos import CurrencyDTO
 from app.auth.exceptions import EmailAlreadyExistsError, InvalidCredentialsError
 from app.constants import (
     TOKEN_CLAIM_ROLE,
