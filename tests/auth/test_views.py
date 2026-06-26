@@ -75,6 +75,8 @@ class TestRegisterView(unittest.TestCase):
                         "email": "test@example.com",
                         "displayName": "Test User",
                         "role": "customer",
+                        "balance": 1000,
+                        "currency": {"code": "INR", "symbol": "₹"},
                     },
                 },
             },
@@ -159,7 +161,10 @@ class TestRegisterView(unittest.TestCase):
         self.assertEqual(written["_id"], FAKE_UID)
         self.assertEqual(written["email"], "test@example.com")
         self.assertEqual(written["role"], "customer")
+        self.assertEqual(written["balance"], 1000)
+        self.assertEqual(written["currency"], {"code": "INR", "symbol": "₹"})
         self.assertIsInstance(written["_createdAt"], datetime)
+        self.assertIsInstance(written["_updatedAt"], datetime)
 
     @mock.patch("app.auth.service.auth.create_custom_token")
     @mock.patch("app.auth.service.auth.create_user")
@@ -219,6 +224,8 @@ class TestLoginView(unittest.TestCase):
                         "email": "test@example.com",
                         "displayName": "Test User",
                         "role": "customer",
+                        "balance": 1000,
+                        "currency": {"code": "INR", "symbol": "₹"},
                     },
                 },
             },

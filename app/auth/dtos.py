@@ -24,6 +24,13 @@ class UserRegisterPayloadDTO(UserLoginPayloadDTO):
     role: UserRole
 
 
+class CurrencyDTO(BaseDTO):
+    """Represents a currency with its code and symbol."""
+
+    code: str
+    symbol: str
+
+
 class UserProfileResponseDTO(BaseDTO):
     """Defines what user profile details are allowed in output."""
 
@@ -31,6 +38,8 @@ class UserProfileResponseDTO(BaseDTO):
     email: EmailStr
     display_name: str
     role: str
+    balance: float
+    currency: CurrencyDTO
 
 
 class AuthResponseDTO(BaseDTO):
