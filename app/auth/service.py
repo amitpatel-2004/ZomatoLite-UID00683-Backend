@@ -60,7 +60,7 @@ class AuthService:
             RuntimeError: If Firebase returns any other unexpected error.
         """
         try:
-            user_record = auth.create_user(
+            user_record: auth.UserInfo = auth.create_user(
                 email=payload.email,
                 password=payload.password,
                 display_name=payload.display_name,
