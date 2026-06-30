@@ -1,0 +1,31 @@
+# Git
+.git
+.gitignore
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local environments and dependencies
+.venv/
+vcs/
+htmlcov/
+.coverage
+.pytest_cache/
+.vscode/
+
+# Local Secrets
+.env
+*.json
+
+# Ignore build artifacts, logs, and caches
+dist/
+build/
+*.log
+.npm/
+
+# Always ignore Docker files inside the context
+Dockerfile
+.dockerignore
