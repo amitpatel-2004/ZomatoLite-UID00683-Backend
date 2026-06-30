@@ -1,0 +1,6 @@
+!include:.dockerignore
+
+.git/
+.gitignore
+
+.gcloudignore
