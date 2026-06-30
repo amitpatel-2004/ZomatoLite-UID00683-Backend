@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
@@ -19,5 +21,5 @@ class UploadUrlRequestDTO(BaseDTO):
     """DTO for requesting signed upload URL."""
 
     file_name: str
-    content_type: str
+    content_type: Literal["image/jpeg", "image/png", "image/webp"]
     file_size: int = Field(gt=0)

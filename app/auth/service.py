@@ -66,13 +66,14 @@ class AuthService:
                 display_name=payload.display_name,
             )
             uid = user_record.uid
+            auth.set_custom_user_claims(uid, {"role": payload.role})
         except auth.EmailAlreadyExistsError:
             raise EmailAlreadyExistsError()
         except FirebaseError as e:
             raise RuntimeError(f"Firebase sign-up error: {str(e)}")
 
         now = datetime.now(ZoneInfo("UTC"))
-        FS_CLIENT.document(f"{FirestoreCollections.USERS}/{uid}").set(
+        FS_CLIENT.document(f"{FirestoreCollections.USERS.value}/{uid}").set(
             {
                 "_id": uid,
                 "email": payload.email,
@@ -98,7 +99,7 @@ class AuthService:
                 display_name=payload.display_name,
                 role=payload.role,
                 balance=DEFAULT_BALANCE,
-                currency=CurrencyDTO(**DEFAULT_CURRENCY),
+                currency=CurrencyDTO.model_validate(DEFAULT_CURRENCY),
             ),
         )
 
@@ -140,13 +141,15 @@ class AuthService:
 
         uid: str = response_data["localId"]
 
-        user_snapshot = FS_CLIENT.document(f"{FirestoreCollections.USERS}/{uid}").get()
+        user_snapshot = FS_CLIENT.document(
+            f"{FirestoreCollections.USERS.value}/{uid}"
+        ).get()
         user_data = user_snapshot.to_dict() or {}
         role: str = user_data.get("role", "customer")
         display_name: str = user_data.get("displayName", "")
         balance: float = user_data.get("balance", DEFAULT_BALANCE)
-        currency: CurrencyDTO = CurrencyDTO(
-            **user_data.get("currency", DEFAULT_CURRENCY)
+        currency: CurrencyDTO = CurrencyDTO.model_validate(
+            user_data.get("currency") or DEFAULT_CURRENCY
         )
 
         custom_token: bytes = auth.create_custom_token(

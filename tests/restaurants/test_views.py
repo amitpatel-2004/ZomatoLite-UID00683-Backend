@@ -46,13 +46,13 @@ def _make_firestore_snapshot(data: dict | None, exists: bool = True):
 
 
 class TestRestaurantListView(unittest.TestCase):
-    """Integration tests for GET /api/v1/restaurants/."""
+    """Integration tests for GET /api/v1/restaurants."""
 
     def setUp(self):
         self.app = create_app()
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
-        self.url = "/api/v1/restaurants/"
+        self.url = "/api/v1/restaurants"
 
     @mock.patch("app.auth.middleware.auth.verify_id_token")
     @mock.patch("app.restaurants.service.FS_CLIENT")
@@ -60,7 +60,7 @@ class TestRestaurantListView(unittest.TestCase):
         _mock_owner_auth(mock_verify)
         mock_doc = mock.MagicMock()
         mock_doc.to_dict.return_value = get_mock_firestore_restaurant_doc(OWNER_UID)
-        mock_fs.collection.return_value.where.return_value.order_by.return_value.limit.return_value.stream.return_value = [mock_doc]
+        mock_fs.collection.return_value.where.return_value.order_by.return_value.limit.return_value.get.return_value = [mock_doc]
 
         response = self.client.get(self.url, headers={"Authorization": OWNER_TOKEN})
         self.assertEqual(response.status_code, HTTPStatus.OK)
@@ -68,13 +68,13 @@ class TestRestaurantListView(unittest.TestCase):
 
 
 class TestRestaurantCreateView(unittest.TestCase):
-    """Integration tests for POST /api/v1/restaurants/."""
+    """Integration tests for POST /api/v1/restaurants."""
 
     def setUp(self):
         self.app = create_app()
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
-        self.url = "/api/v1/restaurants/"
+        self.url = "/api/v1/restaurants"
 
     def test_returns_401_without_token(self):
         response = self.client.post(self.url, json=get_valid_create_restaurant_payload())
@@ -147,7 +147,7 @@ class TestRestaurantDetailView(unittest.TestCase):
     @mock.patch("app.restaurants.service.FS_CLIENT")
     def test_returns_200_for_existing_restaurant(self, mock_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(get_mock_firestore_restaurant_doc(OWNER_UID))
         )
         response = self.client.get(
@@ -160,7 +160,7 @@ class TestRestaurantDetailView(unittest.TestCase):
     @mock.patch("app.restaurants.service.FS_CLIENT")
     def test_returns_404_for_missing_restaurant(self, mock_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(None, exists=False)
         )
         response = self.client.get(
@@ -184,7 +184,7 @@ class TestRestaurantUpdateView(unittest.TestCase):
     @mock.patch("app.restaurants.service.FS_CLIENT")
     def test_returns_200_on_success(self, mock_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(get_mock_firestore_restaurant_doc(OWNER_UID))
         )
         response = self.client.put(
@@ -197,7 +197,7 @@ class TestRestaurantUpdateView(unittest.TestCase):
     @mock.patch("app.restaurants.service.FS_CLIENT")
     def test_returns_403_when_not_owner(self, mock_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(get_mock_firestore_restaurant_doc("different-owner-uid"))
         )
         response = self.client.put(
@@ -210,7 +210,7 @@ class TestRestaurantUpdateView(unittest.TestCase):
     @mock.patch("app.restaurants.service.FS_CLIENT")
     def test_updates_only_provided_fields(self, mock_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(get_mock_firestore_restaurant_doc(OWNER_UID))
         )
 
@@ -218,8 +218,8 @@ class TestRestaurantUpdateView(unittest.TestCase):
             self.url, json={"name": "New Name"}, headers={"Authorization": OWNER_TOKEN}
         )
 
-        mock_fs.collection.return_value.document.return_value.update.assert_called_once()
-        updates = mock_fs.collection.return_value.document.return_value.update.call_args[0][0]
+        mock_fs.document.return_value.set.assert_called_once()
+        updates = mock_fs.document.return_value.set.call_args[0][0]
         self.assertEqual(updates["name"], "New Name")
         self.assertNotIn("cuisineTypes", updates)
 
@@ -237,7 +237,7 @@ class TestRestaurantDeleteView(unittest.TestCase):
     @mock.patch("app.restaurants.service.FS_CLIENT")
     def test_returns_200_on_success(self, mock_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(get_mock_firestore_restaurant_doc(OWNER_UID))
         )
         response = self.client.delete(self.url, headers={"Authorization": OWNER_TOKEN})
@@ -248,7 +248,7 @@ class TestRestaurantDeleteView(unittest.TestCase):
     @mock.patch("app.restaurants.service.FS_CLIENT")
     def test_returns_404_when_not_found(self, mock_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(None, exists=False)
         )
         response = self.client.delete(self.url, headers={"Authorization": OWNER_TOKEN})
@@ -258,14 +258,14 @@ class TestRestaurantDeleteView(unittest.TestCase):
     @mock.patch("app.restaurants.service.FS_CLIENT")
     def test_soft_deletes_by_setting_status_deleted(self, mock_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(get_mock_firestore_restaurant_doc(OWNER_UID))
         )
 
         self.client.delete(self.url, headers={"Authorization": OWNER_TOKEN})
 
-        mock_fs.collection.return_value.document.return_value.update.assert_called_once()
-        updates = mock_fs.collection.return_value.document.return_value.update.call_args[0][0]
+        mock_fs.document.return_value.update.assert_called_once()
+        updates = mock_fs.document.return_value.update.call_args[0][0]
         self.assertEqual(updates["status"], "deleted")
 
 
@@ -279,13 +279,14 @@ class TestMenuItemListView(unittest.TestCase):
         self.url = f"/api/v1/restaurants/{RESTAURANT_ID}/menu-items"
 
     @mock.patch("app.auth.middleware.auth.verify_id_token")
+    @mock.patch("app.restaurants.menu_items.service.FS_CLIENT")
     @mock.patch("app.restaurants.service.FS_CLIENT")
-    def test_returns_200_with_paginated_items(self, mock_fs, mock_verify):
+    def test_returns_200_with_paginated_items(self, mock_resto_fs, mock_menu_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_resto_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(get_mock_firestore_restaurant_doc(OWNER_UID))
         )
-        mock_fs.collection.return_value.document.return_value.collection.return_value.where.return_value.order_by.return_value.limit.return_value.stream.return_value = []
+        mock_menu_fs.collection.return_value.where.return_value.order_by.return_value.limit.return_value.get.return_value = []
 
         response = self.client.get(self.url, headers={"Authorization": OWNER_TOKEN})
         self.assertEqual(response.status_code, HTTPStatus.OK)
@@ -293,9 +294,9 @@ class TestMenuItemListView(unittest.TestCase):
 
     @mock.patch("app.auth.middleware.auth.verify_id_token")
     @mock.patch("app.restaurants.service.FS_CLIENT")
-    def test_returns_404_when_restaurant_not_found(self, mock_fs, mock_verify):
+    def test_returns_404_when_restaurant_not_found(self, mock_resto_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_resto_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(None, exists=False)
         )
         response = self.client.get(self.url, headers={"Authorization": OWNER_TOKEN})
@@ -323,9 +324,9 @@ class TestMenuItemCreateView(unittest.TestCase):
 
     @mock.patch("app.auth.middleware.auth.verify_id_token")
     @mock.patch("app.restaurants.service.FS_CLIENT")
-    def test_returns_403_when_not_owner(self, mock_fs, mock_verify):
+    def test_returns_403_when_not_owner(self, mock_resto_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_resto_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(get_mock_firestore_restaurant_doc("different-owner-uid"))
         )
         response = self.client.post(
@@ -336,15 +337,15 @@ class TestMenuItemCreateView(unittest.TestCase):
         self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
 
     @mock.patch("app.auth.middleware.auth.verify_id_token")
+    @mock.patch("app.restaurants.menu_items.service.FS_CLIENT")
     @mock.patch("app.restaurants.service.FS_CLIENT")
-    def test_returns_201_on_success(self, mock_fs, mock_verify):
+    def test_returns_201_on_success(self, mock_resto_fs, mock_menu_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_resto_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(get_mock_firestore_restaurant_doc(OWNER_UID))
         )
-        mock_doc_ref = mock.MagicMock()
-        mock_doc_ref.id = ITEM_ID
-        mock_fs.collection.return_value.document.return_value.collection.return_value.document.return_value = mock_doc_ref
+        mock_menu_fs.collection.return_value.where.return_value.limit.return_value.get.return_value = []
+        mock_menu_fs.collection.return_value.document.return_value.id = ITEM_ID
 
         response = self.client.post(
             self.url,
@@ -365,14 +366,15 @@ class TestMenuItemDeleteView(unittest.TestCase):
         self.url = f"/api/v1/restaurants/{RESTAURANT_ID}/menu-items/{ITEM_ID}"
 
     @mock.patch("app.auth.middleware.auth.verify_id_token")
+    @mock.patch("app.restaurants.menu_items.service.FS_CLIENT")
     @mock.patch("app.restaurants.service.FS_CLIENT")
-    def test_returns_200_on_success(self, mock_fs, mock_verify):
+    def test_returns_200_on_success(self, mock_resto_fs, mock_menu_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_resto_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(get_mock_firestore_restaurant_doc(OWNER_UID))
         )
-        mock_fs.collection.return_value.document.return_value.collection.return_value.document.return_value.get.return_value = (
-            _make_firestore_snapshot({"_id": ITEM_ID, "isDeleted": False})
+        mock_menu_fs.document.return_value.get.return_value = (
+            _make_firestore_snapshot({"_id": ITEM_ID, "status": "active"})
         )
 
         response = self.client.delete(self.url, headers={"Authorization": OWNER_TOKEN})
@@ -380,13 +382,14 @@ class TestMenuItemDeleteView(unittest.TestCase):
         self.assertEqual(response.get_json()["message"], RESPONSE_MSG_MENU_ITEM_DELETED)
 
     @mock.patch("app.auth.middleware.auth.verify_id_token")
+    @mock.patch("app.restaurants.menu_items.service.FS_CLIENT")
     @mock.patch("app.restaurants.service.FS_CLIENT")
-    def test_returns_404_when_item_not_found(self, mock_fs, mock_verify):
+    def test_returns_404_when_item_not_found(self, mock_resto_fs, mock_menu_fs, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_resto_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(get_mock_firestore_restaurant_doc(OWNER_UID))
         )
-        mock_fs.collection.return_value.document.return_value.collection.return_value.document.return_value.get.return_value = (
+        mock_menu_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(None, exists=False)
         )
 
@@ -396,20 +399,20 @@ class TestMenuItemDeleteView(unittest.TestCase):
 
 
 class TestMenuItemUploadUrlView(unittest.TestCase):
-    """Integration tests for POST /api/v1/restaurants/<restaurant_id>/menu-items/upload-url."""
+    """Handles POST /api/v1/restaurants/<restaurant_id>/menu-items/upload-url."""
 
     def setUp(self):
         self.app = create_app()
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
-        self.url = f"/api/v1/restaurants/{RESTAURANT_ID}/menu-items/upload-url"
+        self.url = f"/api/v1/restaurants/{RESTAURANT_ID}/menu-items/image-upload"
 
     @mock.patch("app.auth.middleware.auth.verify_id_token")
-    @mock.patch("app.restaurants.service.generate_signed_upload_url")
+    @mock.patch("app.restaurants.menu_items.service.generate_signed_upload_url")
     @mock.patch("app.restaurants.service.FS_CLIENT")
     def test_returns_200_with_upload_url(self, mock_fs, mock_generate_url, mock_verify):
         _mock_owner_auth(mock_verify)
-        mock_fs.collection.return_value.document.return_value.get.return_value = (
+        mock_fs.document.return_value.get.return_value = (
             _make_firestore_snapshot(get_mock_firestore_restaurant_doc(OWNER_UID))
         )
         mock_generate_url.return_value = "https://storage.googleapis.com/fake-signed-url"

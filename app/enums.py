@@ -32,6 +32,13 @@ class RestaurantStatus(str, Enum):
 
 
 
+class MenuItemStatus(str, Enum):
+    """Possible states for a menu item."""
+
+    ACTIVE = "active"
+    DELETED = "deleted"
+
+
 class CuisineType(str, Enum):
     """Allowed cuisine categories for a restaurant."""
 

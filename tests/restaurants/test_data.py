@@ -1,4 +1,5 @@
-from app.restaurants.dtos import MenuItemResponseDTO, RestaurantResponseDTO
+from app.restaurants.dtos import RestaurantResponseDTO
+from app.restaurants.menu_items.dtos import MenuItemResponseDTO
 
 
 def get_valid_create_restaurant_payload() -> dict:
@@ -43,7 +44,9 @@ def get_mock_firestore_restaurant_doc(owner_uid: str = "owner-uid-123") -> dict:
     }
 
 
-def get_mock_restaurant_response(owner_uid: str = "owner-uid-123") -> RestaurantResponseDTO:
+def get_mock_restaurant_response(
+    owner_uid: str = "owner-uid-123",
+) -> RestaurantResponseDTO:
     """Return a mock RestaurantResponseDTO."""
     return RestaurantResponseDTO(
         _id="rest-123",

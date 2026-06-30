@@ -1,9 +1,10 @@
-from typing import Annotated, Optional
+from typing import Annotated
 
 from pydantic import Field, StringConstraints
 
 from app.dtos import BaseDTO
 from app.enums import CuisineType, RestaurantStatus
+from app.restaurants.constants import TIME_FORMAT_REGEX
 
 
 class CreateRestaurantPayloadDTO(BaseDTO):
@@ -12,57 +13,23 @@ class CreateRestaurantPayloadDTO(BaseDTO):
     name: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
     ]
-    description: str = ""
+    description: Annotated[str, StringConstraints(max_length=500)] = ""
     cuisine_types: list[CuisineType] = Field(min_length=1)
-    opening_time: Annotated[str, StringConstraints(pattern=r"^\d{2}:\d{2}$")]
-    closing_time: Annotated[str, StringConstraints(pattern=r"^\d{2}:\d{2}$")]
+    opening_time: Annotated[str, StringConstraints(pattern=TIME_FORMAT_REGEX)]
+    closing_time: Annotated[str, StringConstraints(pattern=TIME_FORMAT_REGEX)]
 
 
 class UpdateRestaurantPayloadDTO(BaseDTO):
     """Validation DTO for updating an existing restaurant."""
 
-    name: Optional[
-        Annotated[
-            str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
-        ]
-    ] = None
-    description: Optional[str] = None
-    cuisine_types: Optional[list[CuisineType]] = None
-    opening_time: Optional[
-        Annotated[str, StringConstraints(pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")]
-    ] = None
-    closing_time: Optional[
-        Annotated[str, StringConstraints(pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")]
-    ] = None
-    status: Optional[RestaurantStatus] = None
-
-
-class CreateMenuItemPayloadDTO(BaseDTO):
-    """Validation DTO for adding a menu item."""
-
     name: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
-    ]
-    description: str = ""
-    price: float = Field(gt=0)
-    is_veg: bool
-    quantity: Optional[int] = Field(default=None, ge=0)
-    image_path: Optional[str] = None
-
-
-class UpdateMenuItemPayloadDTO(BaseDTO):
-    """Validation DTO for updating a menu item."""
-
-    name: Optional[
-        Annotated[
-            str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
-        ]
-    ] = None
-    description: Optional[str] = None
-    price: Optional[float] = Field(default=None, gt=0)
-    is_veg: Optional[bool] = None
-    quantity: Optional[int] = Field(default=None, ge=0)
-    image_path: Optional[str] = None
+    ] | None = None
+    description: Annotated[str, StringConstraints(max_length=500)] | None = None
+    cuisine_types: list[CuisineType] | None = None
+    opening_time: Annotated[str, StringConstraints(pattern=TIME_FORMAT_REGEX)] | None = None
+    closing_time: Annotated[str, StringConstraints(pattern=TIME_FORMAT_REGEX)] | None = None
+    status: RestaurantStatus | None = None
 
 
 class RestaurantResponseDTO(BaseDTO):
@@ -71,29 +38,9 @@ class RestaurantResponseDTO(BaseDTO):
     id: str = Field(alias="_id")
     owner_id: str
     name: str
-    description: str
-    cuisine_types: list[str]
-    rating: float
-    status: str
+    description: str = ""
+    cuisine_types: list[str] = []
+    rating: float = 0.0
+    status: str = RestaurantStatus.ACTIVE
     opening_time: str
     closing_time: str
-
-
-class MenuItemResponseDTO(BaseDTO):
-    """Output shape for a single menu item."""
-
-    id: str = Field(alias="_id")
-    name: str
-    description: str
-    price: float
-    is_veg: bool
-    image_path: Optional[str]
-    rating: float
-    quantity: Optional[int] = None
-
-
-class UploadUrlResponseDTO(BaseDTO):
-    """Output shape for a signed upload URL response."""
-
-    upload_url: str
-    image_path: str
