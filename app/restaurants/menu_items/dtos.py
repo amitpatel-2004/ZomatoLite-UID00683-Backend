@@ -12,8 +12,8 @@ class CreateMenuItemPayloadDTO(BaseDTO):
     name: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
     ]
-    description: str = ""
-    price: float = Field(gt=0)
+    description: Annotated[str, StringConstraints(max_length=500)] = ""
+    price: float = Field(gt=0, le=9999.99)
     is_veg: bool
     quantity: int | None = Field(default=None, ge=0, le=9999)
     image_path: str | None = None
@@ -22,11 +22,14 @@ class CreateMenuItemPayloadDTO(BaseDTO):
 class UpdateMenuItemPayloadDTO(BaseDTO):
     """Validation DTO for updating a menu item."""
 
-    name: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
-    ] | None = None
-    description: str | None = None
-    price: float | None = Field(default=None, gt=0)
+    name: (
+        Annotated[
+            str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+        ]
+        | None
+    ) = None
+    description: Annotated[str, StringConstraints(max_length=500)] | None = None
+    price: float | None = Field(default=None, gt=0, le=9999.99)
     is_veg: bool | None = None
     quantity: int | None = Field(default=None, ge=0, le=9999)
     image_path: str | None = None

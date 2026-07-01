@@ -189,11 +189,7 @@ class RestaurantEntityView(MethodView):
 
         try:
             result = RestaurantService().update_restaurant(restaurant_id, payload)
-        except RestaurantNotFoundError as e:
-            return json_response(
-                message=e.message, status_code=e.status_code, detail=e.detail
-            )
-        except DuplicateRestaurantNameError as e:
+        except (RestaurantNotFoundError, DuplicateRestaurantNameError) as e:
             return json_response(
                 message=e.message, status_code=e.status_code, detail=e.detail
             )
