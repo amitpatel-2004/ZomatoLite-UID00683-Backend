@@ -46,3 +46,14 @@ class CuisineType(str, Enum):
     CHINESE = "chinese"
     ITALIAN = "italian"
     OTHER = "other"
+
+
+class OrderStatus(str, Enum):
+    """Possible states for an order."""
+
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    PREPARING = "preparing"
+    OUT_FOR_DELIVERY = "out_for_delivery"
+    DELIVERED = "delivered"
+    REJECTED = "rejected"

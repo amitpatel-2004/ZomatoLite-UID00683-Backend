@@ -6,6 +6,7 @@ from app.restaurants.views import (
     RestaurantEntityView,
 )
 from app.restaurants.menu_items.routes import menu_items_bp
+from app.restaurants.orders.routes import orders_bp
 
 restaurants_bp = Blueprint("restaurants", __name__)
 
@@ -25,4 +26,7 @@ restaurants_bp.add_url_rule(
 
 restaurants_bp.register_blueprint(
     blueprint=menu_items_bp, url_prefix="/<restaurant_id>/menu-items"
+)
+restaurants_bp.register_blueprint(
+    blueprint=orders_bp, url_prefix="/<restaurant_id>/orders"
 )
