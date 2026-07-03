@@ -1,3 +1,4 @@
+import logging
 from http import HTTPStatus
 
 from flask import Response, g, request
@@ -25,6 +26,8 @@ from app.restaurants.exceptions import (
 )
 from app.restaurants.service import RestaurantService
 from app.utils import extract_validation_errors, json_response, parse_pagination_params
+
+logger = logging.getLogger(__name__)
 
 
 def _check_restaurant_owner(restaurant_id: str) -> tuple[Response, HTTPStatus] | None:
@@ -94,6 +97,7 @@ class RestaurantCollectionView(MethodView):
                 message=e.message, status_code=e.status_code, detail=e.detail
             )
         except Exception:
+            logger.exception("Create restaurant failed: owner=%s", g.uid)
             return json_response(
                 message=CustomException.message,
                 status_code=CustomException.status_code,
@@ -151,6 +155,7 @@ class RestaurantEntityView(MethodView):
                 message=e.message, status_code=e.status_code, detail=e.detail
             )
         except Exception:
+            logger.exception("Get restaurant failed: id=%s", restaurant_id)
             return json_response(
                 message=CustomException.message,
                 status_code=CustomException.status_code,
@@ -194,6 +199,7 @@ class RestaurantEntityView(MethodView):
                 message=e.message, status_code=e.status_code, detail=e.detail
             )
         except Exception:
+            logger.exception("Update restaurant failed: id=%s", restaurant_id)
             return json_response(
                 message=CustomException.message,
                 status_code=CustomException.status_code,
@@ -225,6 +231,7 @@ class RestaurantEntityView(MethodView):
                 message=e.message, status_code=e.status_code, detail=e.detail
             )
         except Exception:
+            logger.exception("Delete restaurant failed: id=%s", restaurant_id)
             return json_response(
                 message=CustomException.message,
                 status_code=CustomException.status_code,

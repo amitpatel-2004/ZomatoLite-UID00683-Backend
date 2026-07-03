@@ -1,3 +1,4 @@
+import logging
 from http import HTTPStatus
 
 from flask import request, Response
@@ -16,6 +17,8 @@ from app.constants import (
     RESPONSE_MSG_MISSING_FIELDS,
 )
 from app.utils import extract_validation_errors, json_response
+
+logger = logging.getLogger(__name__)
 
 
 class RegisterView(MethodView):
@@ -51,6 +54,7 @@ class RegisterView(MethodView):
                 status_code=e.status_code,
             )
         except Exception:
+            logger.exception("Register failed: email=%s", input_data.email)
             return json_response(
                 message=CustomException.message,
                 status_code=CustomException.status_code,
@@ -96,6 +100,7 @@ class LoginView(MethodView):
                 status_code=e.status_code,
             )
         except Exception:
+            logger.exception("Login failed: email=%s", input_data.email)
             return json_response(
                 message=CustomException.message,
                 status_code=CustomException.status_code,

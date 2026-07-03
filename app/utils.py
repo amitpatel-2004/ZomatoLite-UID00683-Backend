@@ -1,10 +1,17 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from http import HTTPStatus
 from typing import Any, Callable
+from zoneinfo import ZoneInfo
 
 from flask import Request, Response, jsonify
 from pydantic import ValidationError
 
+from app.constants import (
+    DEFAULT_PAGINATION_LIMIT,
+    MAX_PAGINATION_LIMIT,
+    MIN_PAGINATION_LIMIT,
+    SIGNED_UPLOAD_URL_EXPIRY_MINUTES,
+)
 from app.settings import IMAGE_UPLOAD_BUCKET_NAME, GCS_CLIENT
 
 
@@ -16,10 +23,10 @@ def parse_pagination_params(request: Request) -> tuple[str | None, int]:
     """Get cursor and limit from query params."""
     cursor = request.args.get("after", None)
     try:
-        limit = int(request.args.get("limit", 20))
+        limit = int(request.args.get("limit", DEFAULT_PAGINATION_LIMIT))
     except (TypeError, ValueError):
-        limit = 20
-    limit = max(1, min(limit, 50))
+        limit = DEFAULT_PAGINATION_LIMIT
+    limit = max(MIN_PAGINATION_LIMIT, min(limit, MAX_PAGINATION_LIMIT))
     return cursor, limit
 
 
@@ -36,17 +43,19 @@ def paginate_query(
     query,
     limit: int,
     mapper: Callable[[dict], dict],
-    cursor_ref=None,
+    cursor: str | None = None,
 ) -> dict[str, Any]:
     """Apply cursor, fetch docs, and return a paginated response dict."""
-    if cursor_ref is not None:
-        cursor_snap = cursor_ref.get()
-        query = query.start_after(cursor_snap)
+    if cursor is not None:
+        cursor_created_at = datetime.fromtimestamp(float(cursor), tz=ZoneInfo("UTC"))
+        query = query.start_after({"_createdAt": cursor_created_at})
     docs = list(query.get())
     has_more = len(docs) > limit
     page_docs = docs[:limit]
     items = [mapper(doc.to_dict()) for doc in page_docs]
-    next_cursor = page_docs[-1].id if has_more else None
+    next_cursor = (
+        str(page_docs[-1].to_dict()["_createdAt"].timestamp()) if has_more else None
+    )
     return build_paginated_response(items, next_cursor)
 
 
@@ -84,7 +93,9 @@ def json_response(
 
 
 def generate_signed_upload_url(
-    object_path: str, content_type: str, expiry_minutes: int = 15
+    object_path: str,
+    content_type: str,
+    expiry_minutes: int = SIGNED_UPLOAD_URL_EXPIRY_MINUTES,
 ) -> str:
     """Generate a signed URL for client-side upload."""
     bucket = GCS_CLIENT.bucket(IMAGE_UPLOAD_BUCKET_NAME)

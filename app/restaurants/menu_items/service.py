@@ -2,6 +2,7 @@ from uuid import uuid4
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from app.constants import DUPLICATE_NAME_CHECK_LIMIT
 from app.enums import FirestoreCollections, MenuItemStatus
 from app.utils import generate_signed_upload_url, paginate_query
 from app.restaurants.menu_items.dtos import (
@@ -28,17 +29,25 @@ class MenuItemService:
     def _assert_menu_item_name_unique(
         self, restaurant_id: str, name: str, exclude_id: str | None = None
     ) -> None:
+        """Raise if an active menu item with this name exists, other than exclude_id.
+
+        Args:
+            exclude_id: The menu item being updated, excluded from the duplicate check.
+
+        Raises:
+            DuplicateMenuItemNameError: If an active menu item with this name exists.
+        """
         docs = (
             FS_CLIENT.collection(
                 f"{FirestoreCollections.RESTAURANTS.value}/{restaurant_id}/{FirestoreCollections.MENU_ITEMS.value}"
             )
             .where("name", "==", name)
-            .limit(5)
+            .where("status", "==", MenuItemStatus.ACTIVE)
+            .limit(DUPLICATE_NAME_CHECK_LIMIT)
             .get()
         )
         for doc in docs:
-            data = doc.to_dict()
-            if doc.id != exclude_id and data.get("status") != MenuItemStatus.DELETED:
+            if doc.id != exclude_id:
                 raise DuplicateMenuItemNameError(
                     detail=f"A menu item named '{name}' already exists in this restaurant."
                 )
@@ -96,14 +105,7 @@ class MenuItemService:
             .order_by("_createdAt", direction="DESCENDING")
             .limit(limit + 1)
         )
-        cursor_ref = (
-            FS_CLIENT.document(
-                f"{FirestoreCollections.RESTAURANTS.value}/{restaurant_id}/{FirestoreCollections.MENU_ITEMS.value}/{cursor}"
-            )
-            if cursor
-            else None
-        )
-        return paginate_query(query, limit, self._to_response, cursor_ref)
+        return paginate_query(query, limit, self._to_response, cursor)
 
     def get_menu_item(self, restaurant_id: str, item_id: str) -> MenuItemResponseDTO:
         """Fetch a single menu item.
