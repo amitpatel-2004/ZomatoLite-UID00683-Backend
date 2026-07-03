@@ -1,6 +1,7 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from app.constants import DUPLICATE_NAME_CHECK_LIMIT
 from app.enums import FirestoreCollections, RestaurantStatus
 from app.utils import paginate_query
 from app.restaurants.dtos import (
@@ -41,15 +42,23 @@ class RestaurantService:
     def _assert_restaurant_name_unique(
         self, name: str, exclude_id: str | None = None
     ) -> None:
+        """Raise if an active restaurant with this name exists, other than exclude_id.
+
+        Args:
+            exclude_id: The restaurant being updated, excluded from the duplicate check.
+
+        Raises:
+            DuplicateRestaurantNameError: If an active restaurant with this name exists.
+        """
         docs = (
             FS_CLIENT.collection(FirestoreCollections.RESTAURANTS)
             .where("name", "==", name)
-            .limit(2)
+            .where("status", "==", RestaurantStatus.ACTIVE)
+            .limit(DUPLICATE_NAME_CHECK_LIMIT)
             .get()
         )
         for doc in docs:
-            data = doc.to_dict()
-            if doc.id != exclude_id and data.get("status") != RestaurantStatus.DELETED:
+            if doc.id != exclude_id:
                 raise DuplicateRestaurantNameError(
                     detail=f"A restaurant named '{name}' already exists."
                 )
@@ -99,12 +108,7 @@ class RestaurantService:
             .order_by("_createdAt", direction="DESCENDING")
             .limit(limit + 1)
         )
-        cursor_ref = (
-            FS_CLIENT.document(f"{FirestoreCollections.RESTAURANTS.value}/{cursor}")
-            if cursor
-            else None
-        )
-        return paginate_query(query, limit, self._to_response, cursor_ref)
+        return paginate_query(query, limit, self._to_response, cursor)
 
     def list_owner_restaurants(
         self, owner_uid: str, cursor: str | None, limit: int
@@ -121,12 +125,7 @@ class RestaurantService:
             .order_by("_createdAt", direction="DESCENDING")
             .limit(limit + 1)
         )
-        cursor_ref = (
-            FS_CLIENT.document(f"{FirestoreCollections.RESTAURANTS.value}/{cursor}")
-            if cursor
-            else None
-        )
-        return paginate_query(query, limit, self._to_response, cursor_ref)
+        return paginate_query(query, limit, self._to_response, cursor)
 
     def get_restaurant(self, restaurant_id: str) -> RestaurantResponseDTO:
         """Fetch a single restaurant by ID.

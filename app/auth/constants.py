@@ -2,6 +2,10 @@ FIREBASE_AUTH_REST_SIGN_IN = (
     "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword"
 )
 
+EMAIL_REGEX = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+DISPLAY_NAME_REGEX = r"^[A-Za-z ]+$"
+PASSWORD_REGEX = r"^(?=.*[A-Za-z])(?=.*\d).+$"
+
 RESPONSE_MSG_REGISTER_SUCCESS = "User registered successfully."
 RESPONSE_MSG_LOGIN_SUCCESS = "Logged in successfully."
 RESPONSE_MSG_INVALID_CREDENTIALS = "Invalid email or password."

@@ -1,3 +1,4 @@
+import logging
 from http import HTTPStatus
 
 from flask import Response, request
@@ -32,6 +33,8 @@ from app.restaurants.menu_items.service import MenuItemService
 from app.restaurants.views import _check_restaurant_owner
 from app.utils import extract_validation_errors, json_response, parse_pagination_params
 
+logger = logging.getLogger(__name__)
+
 
 class MenuItemCollectionView(MethodView):
     """
@@ -58,6 +61,7 @@ class MenuItemCollectionView(MethodView):
                 message=e.message, status_code=e.status_code, detail=e.detail
             )
         except Exception:
+            logger.exception("List menu items failed: restaurant=%s", restaurant_id)
             return json_response(
                 message=CustomException.message,
                 status_code=CustomException.status_code,
@@ -105,6 +109,7 @@ class MenuItemCollectionView(MethodView):
                 message=e.message, status_code=e.status_code, detail=e.detail
             )
         except Exception:
+            logger.exception("Add menu item failed: restaurant=%s", restaurant_id)
             return json_response(
                 message=CustomException.message,
                 status_code=CustomException.status_code,
@@ -144,6 +149,9 @@ class MenuItemEntityView(MethodView):
                 detail=e.detail,
             )
         except Exception:
+            logger.exception(
+                "Get menu item failed: item=%s restaurant=%s", item_id, restaurant_id
+            )
             return json_response(
                 message=CustomException.message,
                 status_code=CustomException.status_code,
@@ -195,6 +203,9 @@ class MenuItemEntityView(MethodView):
                 message=e.message, status_code=e.status_code, detail=e.detail
             )
         except Exception:
+            logger.exception(
+                "Update menu item failed: item=%s restaurant=%s", item_id, restaurant_id
+            )
             return json_response(
                 message=CustomException.message,
                 status_code=CustomException.status_code,
@@ -230,6 +241,9 @@ class MenuItemEntityView(MethodView):
                 message=e.message, status_code=e.status_code, detail=e.detail
             )
         except Exception:
+            logger.exception(
+                "Delete menu item failed: item=%s restaurant=%s", item_id, restaurant_id
+            )
             return json_response(
                 message=CustomException.message,
                 status_code=CustomException.status_code,
@@ -282,6 +296,7 @@ class MenuItemImageUploadView(MethodView):
                 message=e.message, status_code=e.status_code, detail=e.detail
             )
         except Exception:
+            logger.exception("Upload URL failed: restaurant=%s", restaurant_id)
             return json_response(
                 message=CustomException.message,
                 status_code=CustomException.status_code,
