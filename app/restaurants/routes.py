@@ -1,26 +1,29 @@
 from flask import Blueprint
 
 from app.restaurants.views import (
-    MyRestaurantsView,
-    RestaurantCollectionView,
-    RestaurantEntityView,
+    RestaurantView,
+    get_owner_restaurants,
+    get_all_restaurants,
 )
 from app.restaurants.menu_items.routes import menu_items_bp
 
 restaurants_bp = Blueprint("restaurants", __name__)
 
+restaurants_bp.add_url_rule("/mine", view_func=get_owner_restaurants, methods=["GET"])
 restaurants_bp.add_url_rule(
-    "/mine", view_func=MyRestaurantsView.as_view("restaurants_mine")
+    "",
+    view_func=get_all_restaurants,
+    methods=["GET"],
 )
 restaurants_bp.add_url_rule(
     "",
-    view_func=RestaurantCollectionView.as_view("restaurants_collection"),
-    methods=["GET", "POST"],
+    view_func=RestaurantView.as_view("restaurants_create"),
+    methods=["POST"],
 )
 restaurants_bp.add_url_rule(
     "/<restaurant_id>",
-    view_func=RestaurantEntityView.as_view("restaurants_entity"),
-    methods=["GET", "PUT", "DELETE"],
+    view_func=RestaurantView.as_view("restaurants_entity"),
+    methods=["GET", "PATCH", "DELETE"],
 )
 
 restaurants_bp.register_blueprint(

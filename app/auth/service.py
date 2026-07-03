@@ -26,25 +26,11 @@ from app.constants import (
     FIREBASE_TIMEOUT_SECONDS,
 )
 from app.enums import FirestoreCollections
-from app.settings import FS_CLIENT, FIREBASE_AUTH_EMULATOR_HOST, FIREBASE_WEB_API_KEY
+from app.settings import FS_CLIENT, FIREBASE_WEB_API_KEY
 
 
 class AuthService:
     """Handles all authentication operations against Firebase and Firestore."""
-
-    def _get_login_endpoint(self) -> str:
-        """Return the correct Firebase Auth REST endpoint.
-
-        Switches between emulator and production URLs based on the
-        FIREBASE_AUTH_EMULATOR_HOST environment variable.
-
-        Returns:
-            The full URL string for the sign-in endpoint.
-        """
-        if FIREBASE_AUTH_EMULATOR_HOST:
-            base_url = f"http://{FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts"
-            return f"{base_url}:signInWithPassword"
-        return FIREBASE_AUTH_REST_SIGN_IN
 
     def register_user(self, payload: UserRegisterPayloadDTO) -> AuthResponseDTO:
         """Create a new user in Firebase Auth and save their profile to Firestore.
@@ -117,7 +103,7 @@ class AuthService:
             RuntimeError: If Firebase returns any other unexpected error.
         """
         response = requests.post(
-            self._get_login_endpoint(),
+            FIREBASE_AUTH_REST_SIGN_IN,
             params={"key": FIREBASE_WEB_API_KEY},
             json={
                 "email": payload.email,

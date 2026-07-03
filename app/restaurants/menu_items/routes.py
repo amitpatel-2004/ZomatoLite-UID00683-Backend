@@ -20,5 +20,5 @@ menu_items_bp.add_url_rule(
 menu_items_bp.add_url_rule(
     "/<item_id>",
     view_func=MenuItemEntityView.as_view("menu_items_entity"),
-    methods=["GET", "PUT", "DELETE"],
+    methods=["GET", "PATCH", "DELETE"],
 )

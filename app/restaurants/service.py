@@ -1,18 +1,21 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from app.constants import DUPLICATE_NAME_CHECK_LIMIT
-from app.enums import FirestoreCollections, RestaurantStatus
+from google.cloud import firestore
+
+from app.enums import FirestoreCollections
 from app.utils import paginate_query
 from app.restaurants.dtos import (
     CreateRestaurantPayloadDTO,
     RestaurantResponseDTO,
     UpdateRestaurantPayloadDTO,
 )
+from app.restaurants.enums import RestaurantStatus
 from app.restaurants.exceptions import (
     DuplicateRestaurantNameError,
     RestaurantNotFoundError,
 )
+from app.restaurants.menu_items.enums import MenuItemStatus
 from app.settings import FS_CLIENT
 
 
@@ -40,7 +43,7 @@ class RestaurantService:
         return data
 
     def _assert_restaurant_name_unique(
-        self, name: str, exclude_id: str | None = None
+        self, name: str, exclude_id: str | None = None, transaction=None
     ) -> None:
         """Raise if an active restaurant with this name exists, other than exclude_id.
 
@@ -50,13 +53,13 @@ class RestaurantService:
         Raises:
             DuplicateRestaurantNameError: If an active restaurant with this name exists.
         """
-        docs = (
+        query = (
             FS_CLIENT.collection(FirestoreCollections.RESTAURANTS)
             .where("name", "==", name)
             .where("status", "==", RestaurantStatus.ACTIVE)
-            .limit(DUPLICATE_NAME_CHECK_LIMIT)
-            .get()
+            .limit(1)
         )
+        docs = query.get(transaction=transaction)
         for doc in docs:
             if doc.id != exclude_id:
                 raise DuplicateRestaurantNameError(
@@ -75,7 +78,6 @@ class RestaurantService:
         Returns:
             RestaurantResponseDTO with the new restaurant data.
         """
-        self._assert_restaurant_name_unique(payload.name)
         ref = FS_CLIENT.collection(FirestoreCollections.RESTAURANTS).document()
         restaurant_id = ref.id
         data = {
@@ -93,7 +95,15 @@ class RestaurantService:
             "_createdAt": _now(),
             "_updatedAt": _now(),
         }
-        ref.set(data)
+
+        transaction = FS_CLIENT.transaction()
+
+        @firestore.transactional
+        def _create(transaction):
+            self._assert_restaurant_name_unique(payload.name, transaction=transaction)
+            transaction.set(ref, data)
+
+        _create(transaction)
         return RestaurantResponseDTO.model_validate(data)
 
     def list_restaurants(self, cursor: str | None, limit: int) -> dict:
@@ -106,9 +116,14 @@ class RestaurantService:
             FS_CLIENT.collection(FirestoreCollections.RESTAURANTS)
             .where("status", "==", RestaurantStatus.ACTIVE)
             .order_by("_createdAt", direction="DESCENDING")
-            .limit(limit + 1)
+            .limit(limit)
         )
-        return paginate_query(query, limit, self._to_response, cursor)
+        cursor_ref = (
+            FS_CLIENT.document(f"{FirestoreCollections.RESTAURANTS.value}/{cursor}")
+            if cursor
+            else None
+        )
+        return paginate_query(query, limit, self._to_response, cursor_ref)
 
     def list_owner_restaurants(
         self, owner_uid: str, cursor: str | None, limit: int
@@ -123,9 +138,14 @@ class RestaurantService:
             .where("ownerId", "==", owner_uid)
             .where("status", "==", RestaurantStatus.ACTIVE)
             .order_by("_createdAt", direction="DESCENDING")
-            .limit(limit + 1)
+            .limit(limit)
         )
-        return paginate_query(query, limit, self._to_response, cursor)
+        cursor_ref = (
+            FS_CLIENT.document(f"{FirestoreCollections.RESTAURANTS.value}/{cursor}")
+            if cursor
+            else None
+        )
+        return paginate_query(query, limit, self._to_response, cursor_ref)
 
     def get_restaurant(self, restaurant_id: str) -> RestaurantResponseDTO:
         """Fetch a single restaurant by ID.
@@ -137,38 +157,58 @@ class RestaurantService:
         return RestaurantResponseDTO.model_validate(data)
 
     def update_restaurant(
-        self, restaurant_id: str, payload: UpdateRestaurantPayloadDTO
+        self,
+        restaurant_id: str,
+        payload: UpdateRestaurantPayloadDTO,
+        restaurant: RestaurantResponseDTO,
     ) -> RestaurantResponseDTO:
         """Update fields on a restaurant.
 
         Raises:
-            RestaurantNotFoundError: If restaurant doesn't exist or is deleted.
             DuplicateRestaurantNameError: If another restaurant with the same name exists.
         """
-        data = self._get_restaurant_or_raise(restaurant_id)
-        if payload.name is not None:
-            self._assert_restaurant_name_unique(payload.name, exclude_id=restaurant_id)
         updates = payload.model_dump(by_alias=True, exclude_none=True, mode="json")
         updates["_updatedAt"] = _now()
-        FS_CLIENT.document(
+        ref = FS_CLIENT.document(
             f"{FirestoreCollections.RESTAURANTS.value}/{restaurant_id}"
-        ).set(updates, merge=True)
+        )
+
+        transaction = FS_CLIENT.transaction()
+
+        @firestore.transactional
+        def _update(transaction):
+            if payload.name is not None:
+                self._assert_restaurant_name_unique(
+                    payload.name, exclude_id=restaurant_id, transaction=transaction
+                )
+            transaction.set(ref, updates, merge=True)
+
+        _update(transaction)
+
+        data = restaurant.model_dump(by_alias=True)
         data.update(updates)
         return RestaurantResponseDTO.model_validate(data)
 
     def delete_restaurant(self, restaurant_id: str) -> None:
-        """Soft-delete a restaurant by marking its status as deleted.
-
-        Raises:
-            RestaurantNotFoundError: If restaurant doesn't exist or is already deleted.
-        """
+        """Soft-delete a restaurant, and cascade-delete its menu items."""
         # TODO: When orders feature is implemented, prevent deletion if restaurant has active orders.
-        self._get_restaurant_or_raise(restaurant_id)
-        FS_CLIENT.document(
+        now = _now()
+        batch = FS_CLIENT.batch()
+        restaurant_ref = FS_CLIENT.document(
             f"{FirestoreCollections.RESTAURANTS.value}/{restaurant_id}"
-        ).update(
-            {
-                "status": RestaurantStatus.DELETED,
-                "_updatedAt": _now(),
-            }
         )
+        batch.update(
+            restaurant_ref, {"status": RestaurantStatus.DELETED, "_updatedAt": now}
+        )
+        active_items = (
+            FS_CLIENT.collection(
+                f"{FirestoreCollections.RESTAURANTS.value}/{restaurant_id}/{FirestoreCollections.MENU_ITEMS.value}"
+            )
+            .where("status", "==", MenuItemStatus.ACTIVE)
+            .get()
+        )
+        for item in active_items:
+            batch.update(
+                item.reference, {"status": MenuItemStatus.DELETED, "_updatedAt": now}
+            )
+        batch.commit()

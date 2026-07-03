@@ -3,13 +3,13 @@ from typing import Annotated
 from pydantic import Field, StringConstraints
 
 from app.dtos import BaseDTO
-from app.enums import MenuItemStatus
 from app.restaurants.constants import (
     MENU_ITEM_DESCRIPTION_MAX_LENGTH,
     MENU_ITEM_MAX_PRICE,
     MENU_ITEM_MAX_QUANTITY,
     MENU_ITEM_NAME_MAX_LENGTH,
 )
+from app.restaurants.menu_items.enums import MenuItemStatus
 
 
 class CreateMenuItemPayloadDTO(BaseDTO):
@@ -44,9 +44,10 @@ class UpdateMenuItemPayloadDTO(BaseDTO):
         ]
         | None
     ) = None
-    description: Annotated[
-        str, StringConstraints(max_length=MENU_ITEM_DESCRIPTION_MAX_LENGTH)
-    ] | None = None
+    description: (
+        Annotated[str, StringConstraints(max_length=MENU_ITEM_DESCRIPTION_MAX_LENGTH)]
+        | None
+    ) = None
     price: float | None = Field(default=None, gt=0, le=MENU_ITEM_MAX_PRICE)
     is_veg: bool | None = None
     quantity: int | None = Field(default=None, ge=0, le=MENU_ITEM_MAX_QUANTITY)

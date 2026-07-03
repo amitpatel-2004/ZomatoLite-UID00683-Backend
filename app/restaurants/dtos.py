@@ -3,7 +3,7 @@ from typing import Annotated
 from pydantic import Field, StringConstraints
 
 from app.dtos import BaseDTO
-from app.enums import CuisineType, RestaurantStatus
+from app.restaurants.enums import CuisineType, RestaurantStatus
 from app.restaurants.constants import (
     RESTAURANT_DESCRIPTION_MAX_LENGTH,
     RESTAURANT_NAME_MAX_LENGTH,
@@ -31,18 +31,28 @@ class CreateRestaurantPayloadDTO(BaseDTO):
 class UpdateRestaurantPayloadDTO(BaseDTO):
     """Validation DTO for updating an existing restaurant."""
 
-    name: Annotated[
-        str,
-        StringConstraints(
-            strip_whitespace=True, min_length=1, max_length=RESTAURANT_NAME_MAX_LENGTH
-        ),
-    ] | None = None
-    description: Annotated[
-        str, StringConstraints(max_length=RESTAURANT_DESCRIPTION_MAX_LENGTH)
-    ] | None = None
+    name: (
+        Annotated[
+            str,
+            StringConstraints(
+                strip_whitespace=True,
+                min_length=1,
+                max_length=RESTAURANT_NAME_MAX_LENGTH,
+            ),
+        ]
+        | None
+    ) = None
+    description: (
+        Annotated[str, StringConstraints(max_length=RESTAURANT_DESCRIPTION_MAX_LENGTH)]
+        | None
+    ) = None
     cuisine_types: list[CuisineType] | None = None
-    opening_time: Annotated[str, StringConstraints(pattern=TIME_FORMAT_REGEX)] | None = None
-    closing_time: Annotated[str, StringConstraints(pattern=TIME_FORMAT_REGEX)] | None = None
+    opening_time: (
+        Annotated[str, StringConstraints(pattern=TIME_FORMAT_REGEX)] | None
+    ) = None
+    closing_time: (
+        Annotated[str, StringConstraints(pattern=TIME_FORMAT_REGEX)] | None
+    ) = None
     status: RestaurantStatus | None = None
 
 
