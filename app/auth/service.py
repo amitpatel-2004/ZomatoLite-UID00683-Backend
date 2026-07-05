@@ -26,25 +26,11 @@ from app.constants import (
     FIREBASE_TIMEOUT_SECONDS,
 )
 from app.enums import FirestoreCollections
-from app.settings import FS_CLIENT, FIREBASE_AUTH_EMULATOR_HOST, FIREBASE_WEB_API_KEY
+from app.settings import FS_CLIENT, FIREBASE_WEB_API_KEY
 
 
 class AuthService:
     """Handles all authentication operations against Firebase and Firestore."""
-
-    def _get_login_endpoint(self) -> str:
-        """Return the correct Firebase Auth REST endpoint.
-
-        Switches between emulator and production URLs based on the
-        FIREBASE_AUTH_EMULATOR_HOST environment variable.
-
-        Returns:
-            The full URL string for the sign-in endpoint.
-        """
-        if FIREBASE_AUTH_EMULATOR_HOST:
-            base_url = f"http://{FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts"
-            return f"{base_url}:signInWithPassword"
-        return FIREBASE_AUTH_REST_SIGN_IN
 
     def register_user(self, payload: UserRegisterPayloadDTO) -> AuthResponseDTO:
         """Create a new user in Firebase Auth and save their profile to Firestore.
@@ -66,13 +52,14 @@ class AuthService:
                 display_name=payload.display_name,
             )
             uid = user_record.uid
+            auth.set_custom_user_claims(uid, {"role": payload.role})
         except auth.EmailAlreadyExistsError:
             raise EmailAlreadyExistsError()
         except FirebaseError as e:
             raise RuntimeError(f"Firebase sign-up error: {str(e)}")
 
         now = datetime.now(ZoneInfo("UTC"))
-        FS_CLIENT.document(f"{FirestoreCollections.USERS}/{uid}").set(
+        FS_CLIENT.document(f"{FirestoreCollections.USERS.value}/{uid}").set(
             {
                 "_id": uid,
                 "email": payload.email,
@@ -98,7 +85,7 @@ class AuthService:
                 display_name=payload.display_name,
                 role=payload.role,
                 balance=DEFAULT_BALANCE,
-                currency=CurrencyDTO(**DEFAULT_CURRENCY),
+                currency=CurrencyDTO.model_validate(DEFAULT_CURRENCY),
             ),
         )
 
@@ -116,7 +103,7 @@ class AuthService:
             RuntimeError: If Firebase returns any other unexpected error.
         """
         response = requests.post(
-            self._get_login_endpoint(),
+            FIREBASE_AUTH_REST_SIGN_IN,
             params={"key": FIREBASE_WEB_API_KEY},
             json={
                 "email": payload.email,
@@ -140,13 +127,15 @@ class AuthService:
 
         uid: str = response_data["localId"]
 
-        user_snapshot = FS_CLIENT.document(f"{FirestoreCollections.USERS}/{uid}").get()
+        user_snapshot = FS_CLIENT.document(
+            f"{FirestoreCollections.USERS.value}/{uid}"
+        ).get()
         user_data = user_snapshot.to_dict() or {}
         role: str = user_data.get("role", "customer")
         display_name: str = user_data.get("displayName", "")
         balance: float = user_data.get("balance", DEFAULT_BALANCE)
-        currency: CurrencyDTO = CurrencyDTO(
-            **user_data.get("currency", DEFAULT_CURRENCY)
+        currency: CurrencyDTO = CurrencyDTO.model_validate(
+            user_data.get("currency") or DEFAULT_CURRENCY
         )
 
         custom_token: bytes = auth.create_custom_token(

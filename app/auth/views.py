@@ -4,19 +4,11 @@ from flask import request, Response
 from flask.views import MethodView
 from pydantic import ValidationError
 
-from app.auth.constants import (
-    RESPONSE_MSG_INVALID_CREDENTIALS,
-    RESPONSE_MSG_LOGIN_SUCCESS,
-    RESPONSE_MSG_REGISTER_SUCCESS,
-    RESPONSE_MSG_REGISTRATION_FAILED,
-)
+from app.auth.enums import AuthSuccessMessage
 from app.auth.dtos import UserLoginPayloadDTO, UserRegisterPayloadDTO
 from app.auth.exceptions import EmailAlreadyExistsError, InvalidCredentialsError
 from app.auth.service import AuthService
-from app.constants import (
-    RESPONSE_MSG_INTERNAL_ERROR,
-    RESPONSE_MSG_MISSING_FIELDS,
-)
+from app.enums import ErrorMessage
 from app.utils import extract_validation_errors, json_response
 
 
@@ -40,26 +32,21 @@ class RegisterView(MethodView):
             input_data = UserRegisterPayloadDTO.model_validate(body)
         except ValidationError as err:
             return json_response(
-                message=RESPONSE_MSG_MISSING_FIELDS,
+                message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
                 errors=extract_validation_errors(err),
                 status_code=HTTPStatus.BAD_REQUEST,
             )
 
         try:
             result = AuthService().register_user(input_data)
-        except EmailAlreadyExistsError:
+        except EmailAlreadyExistsError as e:
             return json_response(
-                message=RESPONSE_MSG_REGISTRATION_FAILED,
-                status_code=HTTPStatus.CONFLICT,
-            )
-        except Exception:
-            return json_response(
-                message=RESPONSE_MSG_INTERNAL_ERROR,
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                message=e.message,
+                status_code=e.status_code,
             )
 
         return json_response(
-            message=RESPONSE_MSG_REGISTER_SUCCESS,
+            message=AuthSuccessMessage.RESPONSE_MSG_REGISTER_SUCCESS,
             data=result.model_dump(by_alias=True),
             status_code=HTTPStatus.CREATED,
         )
@@ -85,26 +72,21 @@ class LoginView(MethodView):
             input_data = UserLoginPayloadDTO.model_validate(body)
         except ValidationError as err:
             return json_response(
-                message=RESPONSE_MSG_MISSING_FIELDS,
+                message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
                 errors=extract_validation_errors(err),
                 status_code=HTTPStatus.BAD_REQUEST,
             )
 
         try:
             result = AuthService().login_user(input_data)
-        except InvalidCredentialsError:
+        except InvalidCredentialsError as e:
             return json_response(
-                message=RESPONSE_MSG_INVALID_CREDENTIALS,
-                status_code=HTTPStatus.UNAUTHORIZED,
-            )
-        except Exception:
-            return json_response(
-                message=RESPONSE_MSG_INTERNAL_ERROR,
-                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                message=e.message,
+                status_code=e.status_code,
             )
 
         return json_response(
-            message=RESPONSE_MSG_LOGIN_SUCCESS,
+            message=AuthSuccessMessage.RESPONSE_MSG_LOGIN_SUCCESS,
             data=result.model_dump(by_alias=True),
             status_code=HTTPStatus.OK,
         )

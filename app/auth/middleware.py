@@ -1,18 +1,14 @@
 from functools import wraps
 from http import HTTPStatus
-from typing import Callable, Optional
+from typing import Callable
 
 from firebase_admin import auth
 from flask import g, request
 
-from app.auth.constants import (
-    RESPONSE_MSG_TOKEN_INVALID,
-    RESPONSE_MSG_TOKEN_MISSING,
-)
-from app.constants import (
-    RESPONSE_MSG_FORBIDDEN,
-    TOKEN_CLAIM_ROLE,
-)
+from app.auth.enums import AuthErrorMessage
+from app.auth.enums import UserRole
+from app.constants import TOKEN_CLAIM_ROLE
+from app.enums import ErrorMessage
 from app.utils import json_response
 
 
@@ -32,11 +28,11 @@ def require_auth(f: Callable) -> Callable:
 
     @wraps(f)
     def decorated(*args, **kwargs):
-        auth_header: Optional[str] = request.headers.get("Authorization")
+        auth_header: str | None = request.headers.get("Authorization")
 
         if not auth_header or not auth_header.startswith("Bearer "):
             return json_response(
-                message=RESPONSE_MSG_TOKEN_MISSING,
+                message=AuthErrorMessage.RESPONSE_MSG_TOKEN_MISSING,
                 status_code=HTTPStatus.UNAUTHORIZED,
             )
 
@@ -44,9 +40,13 @@ def require_auth(f: Callable) -> Callable:
 
         try:
             decoded_token = auth.verify_id_token(id_token)
-        except Exception:
+        except (
+            auth.InvalidIdTokenError,
+            auth.ExpiredIdTokenError,
+            auth.RevokedIdTokenError,
+        ):
             return json_response(
-                message=RESPONSE_MSG_TOKEN_INVALID,
+                message=AuthErrorMessage.RESPONSE_MSG_TOKEN_INVALID,
                 status_code=HTTPStatus.UNAUTHORIZED,
             )
 
@@ -59,14 +59,14 @@ def require_auth(f: Callable) -> Callable:
     return decorated
 
 
-def require_role(*roles: str) -> Callable:
+def require_role(*roles: UserRole) -> Callable:
     """Restrict a route to users whose role matches one of the given roles.
 
     Must be used together with @require_auth, and applied after it,
     so that g.role is already set when this decorator runs.
 
     Args:
-        *roles: The role strings allowed to access this route (e.g. "owner").
+        *roles: The UserRole values allowed to access this route.
 
     Returns:
         A decorator that wraps the view function with role enforcement.
@@ -80,7 +80,7 @@ def require_role(*roles: str) -> Callable:
         def decorated(*args, **kwargs):
             if g.get("role") not in roles:
                 return json_response(
-                    message=RESPONSE_MSG_FORBIDDEN,
+                    message=ErrorMessage.RESPONSE_MSG_FORBIDDEN,
                     status_code=HTTPStatus.FORBIDDEN,
                 )
             return f(*args, **kwargs)
