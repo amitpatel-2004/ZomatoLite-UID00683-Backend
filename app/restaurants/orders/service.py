@@ -3,15 +3,17 @@ from zoneinfo import ZoneInfo
 
 from google.cloud import firestore
 
-from app.constants import DEFAULT_CURRENCY
-from app.enums import (
-    FirestoreCollections,
-    MenuItemStatus,
-    OrderStatus,
-    RestaurantStatus,
+from app.constants import DEFAULT_CURRENCY, TIMEZONE
+from app.enums import FirestoreCollections
+from app.restaurants.enums import RestaurantStatus
+from app.restaurants.menu_items.enums import MenuItemStatus
+from app.restaurants.orders.constants import (
+    BOOKING_FEE_FLAT,
+    BOOKING_FEE_PERCENT,
+    CURRENCY_DECIMAL_PLACES,
 )
-from app.restaurants.orders.constants import BOOKING_FEE_FLAT, BOOKING_FEE_PERCENT
 from app.restaurants.orders.dtos import CreateOrderPayloadDTO, OrderResponseDTO
+from app.restaurants.orders.enums import OrderStatus
 from app.restaurants.orders.exceptions import (
     InsufficientBalanceError,
     ItemUnavailableError,
@@ -24,7 +26,7 @@ from app.settings import FS_CLIENT
 
 
 def _now() -> datetime:
-    return datetime.now(ZoneInfo("UTC"))
+    return datetime.now(ZoneInfo(TIMEZONE))
 
 
 def _is_restaurant_open(opening_time: str, closing_time: str) -> bool:
@@ -40,7 +42,9 @@ def _is_restaurant_open(opening_time: str, closing_time: str) -> bool:
 
 
 def _calc_booking_fee(subtotal: float) -> float:
-    return max(BOOKING_FEE_FLAT, round(subtotal * BOOKING_FEE_PERCENT, 2))
+    return max(
+        BOOKING_FEE_FLAT, round(subtotal * BOOKING_FEE_PERCENT, CURRENCY_DECIMAL_PLACES)
+    )
 
 
 class OrderService:
@@ -118,22 +122,25 @@ class OrderService:
                     detail=f"Not enough stock for item '{item_data['name']}'."
                 )
             actual_price = item_data["price"]
-            if round(actual_price, 2) != round(item_input.unit_price, 2):
+            if round(actual_price, CURRENCY_DECIMAL_PLACES) != round(
+                item_input.unit_price, CURRENCY_DECIMAL_PLACES
+            ):
                 raise PriceChangedError(
                     detail=f"Price for '{item_data['name']}' has changed."
                 )
             subtotal += actual_price * item_input.quantity
             order_items.append(
                 {
+                    "itemId": item_input.item_id,
                     "name": item_data["name"],
                     "quantity": item_input.quantity,
                     "unitPrice": actual_price,
                 }
             )
 
-        subtotal = round(subtotal, 2)
+        subtotal = round(subtotal, CURRENCY_DECIMAL_PLACES)
         booking_fee = _calc_booking_fee(subtotal)
-        total = round(subtotal + booking_fee, 2)
+        total = round(subtotal + booking_fee, CURRENCY_DECIMAL_PLACES)
 
         user_ref = FS_CLIENT.document(f"{FirestoreCollections.USERS.value}/{user_id}")
         order_ref = FS_CLIENT.collection(
@@ -167,6 +174,7 @@ class OrderService:
                     "total": total,
                 },
                 "items": order_items,
+                "itemIds": [item.item_id for item in payload.items],
                 "_createdAt": now,
                 "_updatedAt": now,
             }

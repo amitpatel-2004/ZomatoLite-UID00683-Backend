@@ -1,24 +1,24 @@
 from flask import Blueprint
 
 from app.restaurants.menu_items.views import (
-    MenuItemImageUploadView,
-    MenuItemCollectionView,
-    MenuItemEntityView,
+    MenuItemView,
+    get_menu_items,
+    upload_menu_item_image,
 )
 
 menu_items_bp = Blueprint("menu_items", __name__)
 
 menu_items_bp.add_url_rule(
-    "/image-upload",
-    view_func=MenuItemImageUploadView.as_view("menu_items_image_upload"),
+    "/image-upload", view_func=upload_menu_item_image, methods=["POST"]
 )
+menu_items_bp.add_url_rule("", view_func=get_menu_items, methods=["GET"])
 menu_items_bp.add_url_rule(
     "",
-    view_func=MenuItemCollectionView.as_view("menu_items_collection"),
-    methods=["GET", "POST"],
+    view_func=MenuItemView.as_view("menu_items_create"),
+    methods=["POST"],
 )
 menu_items_bp.add_url_rule(
     "/<item_id>",
-    view_func=MenuItemEntityView.as_view("menu_items_entity"),
-    methods=["GET", "PUT", "DELETE"],
+    view_func=MenuItemView.as_view("menu_items_entity"),
+    methods=["GET", "PATCH", "DELETE"],
 )

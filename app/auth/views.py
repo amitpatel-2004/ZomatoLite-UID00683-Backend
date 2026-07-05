@@ -1,24 +1,15 @@
-import logging
 from http import HTTPStatus
 
 from flask import request, Response
 from flask.views import MethodView
 from pydantic import ValidationError
 
-from app.auth.constants import (
-    RESPONSE_MSG_LOGIN_SUCCESS,
-    RESPONSE_MSG_REGISTER_SUCCESS,
-)
-from app.exceptions import CustomException
+from app.auth.enums import AuthSuccessMessage
 from app.auth.dtos import UserLoginPayloadDTO, UserRegisterPayloadDTO
 from app.auth.exceptions import EmailAlreadyExistsError, InvalidCredentialsError
 from app.auth.service import AuthService
-from app.constants import (
-    RESPONSE_MSG_MISSING_FIELDS,
-)
+from app.enums import ErrorMessage
 from app.utils import extract_validation_errors, json_response
-
-logger = logging.getLogger(__name__)
 
 
 class RegisterView(MethodView):
@@ -41,7 +32,7 @@ class RegisterView(MethodView):
             input_data = UserRegisterPayloadDTO.model_validate(body)
         except ValidationError as err:
             return json_response(
-                message=RESPONSE_MSG_MISSING_FIELDS,
+                message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
                 errors=extract_validation_errors(err),
                 status_code=HTTPStatus.BAD_REQUEST,
             )
@@ -53,15 +44,9 @@ class RegisterView(MethodView):
                 message=e.message,
                 status_code=e.status_code,
             )
-        except Exception:
-            logger.exception("Register failed: email=%s", input_data.email)
-            return json_response(
-                message=CustomException.message,
-                status_code=CustomException.status_code,
-            )
 
         return json_response(
-            message=RESPONSE_MSG_REGISTER_SUCCESS,
+            message=AuthSuccessMessage.RESPONSE_MSG_REGISTER_SUCCESS,
             data=result.model_dump(by_alias=True),
             status_code=HTTPStatus.CREATED,
         )
@@ -87,7 +72,7 @@ class LoginView(MethodView):
             input_data = UserLoginPayloadDTO.model_validate(body)
         except ValidationError as err:
             return json_response(
-                message=RESPONSE_MSG_MISSING_FIELDS,
+                message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
                 errors=extract_validation_errors(err),
                 status_code=HTTPStatus.BAD_REQUEST,
             )
@@ -99,15 +84,9 @@ class LoginView(MethodView):
                 message=e.message,
                 status_code=e.status_code,
             )
-        except Exception:
-            logger.exception("Login failed: email=%s", input_data.email)
-            return json_response(
-                message=CustomException.message,
-                status_code=CustomException.status_code,
-            )
 
         return json_response(
-            message=RESPONSE_MSG_LOGIN_SUCCESS,
+            message=AuthSuccessMessage.RESPONSE_MSG_LOGIN_SUCCESS,
             data=result.model_dump(by_alias=True),
             status_code=HTTPStatus.OK,
         )

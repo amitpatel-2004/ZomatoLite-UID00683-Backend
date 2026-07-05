@@ -1,41 +1,34 @@
 from http import HTTPStatus
 
-from app.exceptions import CustomException
-from app.restaurants.orders.constants import (
-    RESPONSE_MSG_INSUFFICIENT_BALANCE,
-    RESPONSE_MSG_ITEM_UNAVAILABLE,
-    RESPONSE_MSG_ORDER_NOT_FOUND,
-    RESPONSE_MSG_OWN_RESTAURANT_ORDER,
-    RESPONSE_MSG_PRICE_CHANGED,
-    RESPONSE_MSG_RESTAURANT_CLOSED,
-)
+from app.exceptions import BaseHTTPException
+from app.restaurants.orders.enums import OrderErrorMessage
 
 
-class OrderNotFoundError(CustomException):
-    message = RESPONSE_MSG_ORDER_NOT_FOUND
+class OrderNotFoundError(BaseHTTPException):
+    message = OrderErrorMessage.ORDER_NOT_FOUND
     status_code = HTTPStatus.NOT_FOUND
 
 
-class InsufficientBalanceError(CustomException):
-    message = RESPONSE_MSG_INSUFFICIENT_BALANCE
+class InsufficientBalanceError(BaseHTTPException):
+    message = OrderErrorMessage.INSUFFICIENT_BALANCE
     status_code = HTTPStatus.PAYMENT_REQUIRED
 
 
-class RestaurantClosedError(CustomException):
-    message = RESPONSE_MSG_RESTAURANT_CLOSED
+class RestaurantClosedError(BaseHTTPException):
+    message = OrderErrorMessage.RESTAURANT_CLOSED
     status_code = HTTPStatus.CONFLICT
 
 
-class ItemUnavailableError(CustomException):
-    message = RESPONSE_MSG_ITEM_UNAVAILABLE
+class ItemUnavailableError(BaseHTTPException):
+    message = OrderErrorMessage.ITEM_UNAVAILABLE
     status_code = HTTPStatus.CONFLICT
 
 
-class PriceChangedError(CustomException):
-    message = RESPONSE_MSG_PRICE_CHANGED
+class PriceChangedError(BaseHTTPException):
+    message = OrderErrorMessage.PRICE_CHANGED
     status_code = HTTPStatus.CONFLICT
 
 
-class OwnRestaurantOrderError(CustomException):
-    message = RESPONSE_MSG_OWN_RESTAURANT_ORDER
+class OwnRestaurantOrderError(BaseHTTPException):
+    message = OrderErrorMessage.OWN_RESTAURANT_ORDER
     status_code = HTTPStatus.FORBIDDEN

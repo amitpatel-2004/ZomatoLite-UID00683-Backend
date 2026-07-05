@@ -1,7 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 from http import HTTPStatus
 from typing import Any, Callable
-from zoneinfo import ZoneInfo
 
 from flask import Request, Response, jsonify
 from pydantic import ValidationError
@@ -43,19 +42,16 @@ def paginate_query(
     query,
     limit: int,
     mapper: Callable[[dict], dict],
-    cursor: str | None = None,
+    cursor_ref=None,
 ) -> dict[str, Any]:
     """Apply cursor, fetch docs, and return a paginated response dict."""
-    if cursor is not None:
-        cursor_created_at = datetime.fromtimestamp(float(cursor), tz=ZoneInfo("UTC"))
-        query = query.start_after({"_createdAt": cursor_created_at})
+    if cursor_ref is not None:
+        cursor_snap = cursor_ref.get()
+        query = query.start_after(cursor_snap)
     docs = list(query.get())
-    has_more = len(docs) > limit
-    page_docs = docs[:limit]
-    items = [mapper(doc.to_dict()) for doc in page_docs]
-    next_cursor = (
-        str(page_docs[-1].to_dict()["_createdAt"].timestamp()) if has_more else None
-    )
+    has_more = len(docs) == limit
+    items = [mapper(doc.to_dict()) for doc in docs]
+    next_cursor = docs[-1].id if has_more else None
     return build_paginated_response(items, next_cursor)
 
 

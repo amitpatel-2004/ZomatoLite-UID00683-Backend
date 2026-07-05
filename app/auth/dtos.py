@@ -2,16 +2,14 @@ from typing import Annotated
 from pydantic import ConfigDict, EmailStr, Field, StringConstraints
 
 from app.auth.constants import DISPLAY_NAME_REGEX, EMAIL_REGEX, PASSWORD_REGEX
-from app.enums import UserRole
 from app.dtos import BaseDTO, CurrencyDTO
+from app.auth.enums import UserRole
 
 
 class UserLoginPayloadDTO(BaseDTO):
     """Shared base DTO for authentication credentials."""
 
-    email: Annotated[
-        EmailStr, StringConstraints(max_length=255, pattern=EMAIL_REGEX)
-    ]
+    email: Annotated[EmailStr, StringConstraints(max_length=255, pattern=EMAIL_REGEX)]
     password: str = Field(min_length=6, max_length=128)
 
 
@@ -26,7 +24,10 @@ class UserRegisterPayloadDTO(UserLoginPayloadDTO):
     display_name: Annotated[
         str,
         StringConstraints(
-            strip_whitespace=True, min_length=1, max_length=100, pattern=DISPLAY_NAME_REGEX
+            strip_whitespace=True,
+            min_length=1,
+            max_length=100,
+            pattern=DISPLAY_NAME_REGEX,
         ),
     ]
     role: UserRole

@@ -1,35 +1,25 @@
 from http import HTTPStatus
 
-from app.exceptions import CustomException
-from app.constants import RESPONSE_MSG_FORBIDDEN
-from app.restaurants.constants import (
-    RESPONSE_MSG_DUPLICATE_MENU_ITEM_NAME,
-    RESPONSE_MSG_DUPLICATE_RESTAURANT_NAME,
-    RESPONSE_MSG_MENU_ITEM_NOT_FOUND,
-    RESPONSE_MSG_RESTAURANT_NOT_FOUND,
-)
+from app.exceptions import BaseHTTPException
+from app.enums import ErrorMessage
+from app.restaurants.enums import RestaurantErrorMessage
 
 
-class RestaurantNotFoundError(CustomException):
-    message = RESPONSE_MSG_RESTAURANT_NOT_FOUND
+class RestaurantNotFoundError(BaseHTTPException):
+    message = RestaurantErrorMessage.RESTAURANT_NOT_FOUND
     status_code = HTTPStatus.NOT_FOUND
 
 
-class MenuItemNotFoundError(CustomException):
-    message = RESPONSE_MSG_MENU_ITEM_NOT_FOUND
-    status_code = HTTPStatus.NOT_FOUND
-
-
-class NotRestaurantOwnerError(CustomException):
-    message = RESPONSE_MSG_FORBIDDEN
+class NotRestaurantOwnerError(BaseHTTPException):
+    message = ErrorMessage.RESPONSE_MSG_FORBIDDEN
     status_code = HTTPStatus.FORBIDDEN
 
 
-class DuplicateRestaurantNameError(CustomException):
-    message = RESPONSE_MSG_DUPLICATE_RESTAURANT_NAME
+class DuplicateRestaurantNameError(BaseHTTPException):
+    message = RestaurantErrorMessage.DUPLICATE_RESTAURANT_NAME
     status_code = HTTPStatus.CONFLICT
 
 
-class DuplicateMenuItemNameError(CustomException):
-    message = RESPONSE_MSG_DUPLICATE_MENU_ITEM_NAME
+class RestaurantHasActiveOrdersError(BaseHTTPException):
+    message = RestaurantErrorMessage.RESTAURANT_HAS_ACTIVE_ORDERS
     status_code = HTTPStatus.CONFLICT

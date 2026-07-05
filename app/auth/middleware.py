@@ -5,15 +5,10 @@ from typing import Callable
 from firebase_admin import auth
 from flask import g, request
 
-from app.enums import UserRole
-from app.auth.constants import (
-    RESPONSE_MSG_TOKEN_INVALID,
-    RESPONSE_MSG_TOKEN_MISSING,
-)
-from app.constants import (
-    RESPONSE_MSG_FORBIDDEN,
-    TOKEN_CLAIM_ROLE,
-)
+from app.auth.enums import AuthErrorMessage
+from app.auth.enums import UserRole
+from app.constants import TOKEN_CLAIM_ROLE
+from app.enums import ErrorMessage
 from app.utils import json_response
 
 
@@ -37,7 +32,7 @@ def require_auth(f: Callable) -> Callable:
 
         if not auth_header or not auth_header.startswith("Bearer "):
             return json_response(
-                message=RESPONSE_MSG_TOKEN_MISSING,
+                message=AuthErrorMessage.RESPONSE_MSG_TOKEN_MISSING,
                 status_code=HTTPStatus.UNAUTHORIZED,
             )
 
@@ -45,9 +40,13 @@ def require_auth(f: Callable) -> Callable:
 
         try:
             decoded_token = auth.verify_id_token(id_token)
-        except Exception:
+        except (
+            auth.InvalidIdTokenError,
+            auth.ExpiredIdTokenError,
+            auth.RevokedIdTokenError,
+        ):
             return json_response(
-                message=RESPONSE_MSG_TOKEN_INVALID,
+                message=AuthErrorMessage.RESPONSE_MSG_TOKEN_INVALID,
                 status_code=HTTPStatus.UNAUTHORIZED,
             )
 
@@ -81,7 +80,7 @@ def require_role(*roles: UserRole) -> Callable:
         def decorated(*args, **kwargs):
             if g.get("role") not in roles:
                 return json_response(
-                    message=RESPONSE_MSG_FORBIDDEN,
+                    message=ErrorMessage.RESPONSE_MSG_FORBIDDEN,
                     status_code=HTTPStatus.FORBIDDEN,
                 )
             return f(*args, **kwargs)

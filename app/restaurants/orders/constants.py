@@ -1,10 +1,15 @@
+from app.restaurants.orders.enums import OrderStatus
+
 BOOKING_FEE_FLAT = 20.0
 BOOKING_FEE_PERCENT = 0.01
+CURRENCY_DECIMAL_PLACES = 2
 
-RESPONSE_MSG_ORDER_PLACED = "Order placed successfully."
-RESPONSE_MSG_ORDER_NOT_FOUND = "Order not found."
-RESPONSE_MSG_INSUFFICIENT_BALANCE = "Insufficient balance to place this order."
-RESPONSE_MSG_RESTAURANT_CLOSED = "Restaurant is currently closed."
-RESPONSE_MSG_ITEM_UNAVAILABLE = "One or more items are unavailable or out of stock."
-RESPONSE_MSG_PRICE_CHANGED = "Item prices have changed. Please recheck your order and try again."
-RESPONSE_MSG_OWN_RESTAURANT_ORDER = "You cannot place order at your own restaurant."
+ORDER_ITEM_MAX_QUANTITY = 50
+ORDER_MAX_ITEMS = 20
+
+ACTIVE_ORDER_STATUSES = [
+    OrderStatus.PENDING,
+    OrderStatus.ACCEPTED,
+    OrderStatus.PREPARING,
+    OrderStatus.OUT_FOR_DELIVERY,
+]
