@@ -157,7 +157,9 @@ class RestaurantView(MethodView):
         )
 
     @require_owner
-    def delete(self, restaurant_id: str) -> tuple[Response, HTTPStatus]:
+    def delete(
+        self, restaurant_id: str, restaurant: RestaurantResponseDTO
+    ) -> tuple[Response, HTTPStatus]:
         """Soft-delete a restaurant the caller owns.
 
         Returns:

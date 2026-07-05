@@ -10,6 +10,7 @@ from app.constants import (
 )
 from app.enums import ErrorMessage
 from app.dtos import UploadUrlRequestDTO
+from app.restaurants.dtos import RestaurantResponseDTO
 from app.restaurants.menu_items.dtos import (
     CreateMenuItemPayloadDTO,
     UpdateMenuItemPayloadDTO,
@@ -24,31 +25,58 @@ from app.restaurants.middleware import require_owner
 from app.utils import extract_validation_errors, json_response, parse_pagination_params
 
 
-class MenuItemCollectionView(MethodView):
+@require_auth
+def get_menu_items(restaurant_id: str) -> tuple[Response, HTTPStatus]:
+    """Return paginated non-deleted menu items for a restaurant.
+
+    Returns:
+        200 with paginated menu items.
+    """
+    cursor, limit = parse_pagination_params(request)
+    result = MenuItemService().list_menu_items(restaurant_id, cursor, limit)
+
+    return json_response(
+        message=MenuItemSuccessMessage.MENU_ITEMS_FETCHED,
+        data=result,
+    )
+
+
+class MenuItemView(MethodView):
     """
     Handles
-        GET /restaurants/<restaurant_id>/menu-items — public menu listing.
+        GET /restaurants/<restaurant_id>/menu-items/<item_id> — public.
         POST /restaurants/<restaurant_id>/menu-items — add menu item (owner only).
+        PATCH /restaurants/<restaurant_id>/menu-items/<item_id> — owner only.
+        DELETE /restaurants/<restaurant_id>/menu-items/<item_id> — owner only.
     """
 
     decorators = [require_auth]
 
-    def get(self, restaurant_id: str) -> tuple[Response, HTTPStatus]:
-        """Return paginated non-deleted menu items for a restaurant.
+    def get(self, restaurant_id: str, item_id: str) -> tuple[Response, HTTPStatus]:
+        """Return a single menu item.
 
         Returns:
-            200 with paginated menu items.
+            200 with menu item data on success.
+            404 if menu item not found or deleted.
         """
-        cursor, limit = parse_pagination_params(request)
-        result = MenuItemService().list_menu_items(restaurant_id, cursor, limit)
+        try:
+            result = MenuItemService().get_menu_item(restaurant_id, item_id)
+        except MenuItemNotFoundError as e:
+            return json_response(
+                message=e.message,
+                status_code=e.status_code,
+                detail=e.detail,
+            )
 
         return json_response(
             message=MenuItemSuccessMessage.MENU_ITEMS_FETCHED,
-            data=result,
+            data=result.model_dump(by_alias=True),
         )
 
     @require_owner
-    def post(self, restaurant_id: str) -> tuple[Response, HTTPStatus]:
+    def post(
+        self, restaurant_id: str, restaurant: RestaurantResponseDTO
+    ) -> tuple[Response, HTTPStatus]:
         """Add a new menu item to a restaurant the caller owns.
 
         Returns:
@@ -81,40 +109,13 @@ class MenuItemCollectionView(MethodView):
             status_code=HTTPStatus.CREATED,
         )
 
-
-class MenuItemEntityView(MethodView):
-    """
-    Handles
-        GET /restaurants/<restaurant_id>/menu-items/<item_id> — public.
-        PATCH /restaurants/<restaurant_id>/menu-items/<item_id> — owner only.
-        DELETE /restaurants/<restaurant_id>/menu-items/<item_id> — owner only.
-    """
-
-    decorators = [require_auth]
-
-    def get(self, restaurant_id: str, item_id: str) -> tuple[Response, HTTPStatus]:
-        """Return a single menu item.
-
-        Returns:
-            200 with menu item data on success.
-            404 if menu item not found or deleted.
-        """
-        try:
-            result = MenuItemService().get_menu_item(restaurant_id, item_id)
-        except MenuItemNotFoundError as e:
-            return json_response(
-                message=e.message,
-                status_code=e.status_code,
-                detail=e.detail,
-            )
-
-        return json_response(
-            message=MenuItemSuccessMessage.MENU_ITEMS_FETCHED,
-            data=result.model_dump(by_alias=True),
-        )
-
     @require_owner
-    def patch(self, restaurant_id: str, item_id: str) -> tuple[Response, HTTPStatus]:
+    def patch(
+        self,
+        restaurant_id: str,
+        item_id: str,
+        restaurant: RestaurantResponseDTO,
+    ) -> tuple[Response, HTTPStatus]:
         """Update a menu item on a restaurant the caller owns.
 
         Returns:
@@ -151,7 +152,9 @@ class MenuItemEntityView(MethodView):
         )
 
     @require_owner
-    def delete(self, restaurant_id: str, item_id: str) -> tuple[Response, HTTPStatus]:
+    def delete(
+        self, restaurant_id: str, item_id: str, restaurant: RestaurantResponseDTO
+    ) -> tuple[Response, HTTPStatus]:
         """Soft-delete a menu item from a restaurant the caller owns.
 
         Returns:
@@ -169,41 +172,40 @@ class MenuItemEntityView(MethodView):
         return json_response(message=MenuItemSuccessMessage.MENU_ITEM_DELETED)
 
 
-class MenuItemImageUploadView(MethodView):
-    """Handles POST /restaurants/<restaurant_id>/menu-items/image-upload — owner only."""
+@require_auth
+@require_owner
+def upload_menu_item_image(
+    restaurant_id: str, restaurant: RestaurantResponseDTO
+) -> tuple[Response, HTTPStatus]:
+    """Generate a signed URL for direct menu item image upload.
 
-    decorators = [require_owner, require_auth]
-
-    def post(self, restaurant_id: str) -> tuple[Response, HTTPStatus]:
-        """Generate a signed URL for direct menu item image upload.
-
-        Returns:
-            200 with uploadUrl and imagePath on success.
-            400 if fields are invalid or file size exceeds limit.
-            403 if caller doesn't own the restaurant.
-            404 if restaurant not found or deleted.
-        """
-        body = request.get_json() or {}
-        try:
-            payload = UploadUrlRequestDTO.model_validate(body)
-        except ValidationError as err:
-            return json_response(
-                message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
-                errors=extract_validation_errors(err),
-                status_code=HTTPStatus.BAD_REQUEST,
-            )
-
-        if payload.file_size > MAX_IMAGE_UPLOAD_SIZE_BYTES:
-            return json_response(
-                message="File size exceeds the allowed limit.",
-                status_code=HTTPStatus.BAD_REQUEST,
-            )
-
-        result = MenuItemService().generate_menu_item_upload_url(
-            restaurant_id, payload.file_name, payload.content_type
-        )
-
+    Returns:
+        200 with uploadUrl and imagePath on success.
+        400 if fields are invalid or file size exceeds limit.
+        403 if caller doesn't own the restaurant.
+        404 if restaurant not found or deleted.
+    """
+    body = request.get_json() or {}
+    try:
+        payload = UploadUrlRequestDTO.model_validate(body)
+    except ValidationError as err:
         return json_response(
-            message=MenuItemSuccessMessage.UPLOAD_URL_GENERATED,
-            data=result.model_dump(by_alias=True),
+            message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
+            errors=extract_validation_errors(err),
+            status_code=HTTPStatus.BAD_REQUEST,
         )
+
+    if payload.file_size > MAX_IMAGE_UPLOAD_SIZE_BYTES:
+        return json_response(
+            message="File size exceeds the allowed limit.",
+            status_code=HTTPStatus.BAD_REQUEST,
+        )
+
+    result = MenuItemService().generate_menu_item_upload_url(
+        restaurant_id, payload.file_name, payload.content_type
+    )
+
+    return json_response(
+        message=MenuItemSuccessMessage.UPLOAD_URL_GENERATED,
+        data=result.model_dump(by_alias=True),
+    )
