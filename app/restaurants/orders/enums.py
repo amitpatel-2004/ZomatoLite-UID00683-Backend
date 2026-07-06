@@ -10,9 +10,7 @@ class OrderErrorMessage(str, Enum):
     INSUFFICIENT_BALANCE = "Insufficient balance to place this order."
     RESTAURANT_CLOSED = "Restaurant is currently closed."
     ITEM_UNAVAILABLE = "One or more items are unavailable or out of stock."
-    PRICE_CHANGED = (
-        "Item prices have changed. Please recheck your order and try again."
-    )
+    PRICE_CHANGED = "Item prices have changed. Please recheck your order and try again."
     OWN_RESTAURANT_ORDER = "You cannot place order at your own restaurant."
 
 

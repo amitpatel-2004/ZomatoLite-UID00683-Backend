@@ -100,47 +100,6 @@ class OrderService:
             )
             for item in payload.items
         ]
-        item_snaps = FS_CLIENT.get_all(item_refs)
-        item_data_by_id: dict[str, dict] = {}
-        for snap in item_snaps:
-            if snap.exists:
-                item_data_by_id[snap.id] = snap.to_dict()
-
-        order_items = []
-        subtotal = 0.0
-        for item_input in payload.items:
-            item_data = item_data_by_id.get(item_input.item_id)
-            if not item_data or item_data.get("status") == MenuItemStatus.DELETED:
-                raise ItemUnavailableError(
-                    detail=f"Item '{item_input.item_id}' is not available."
-                )
-            if (
-                item_data.get("quantity") is not None
-                and item_data["quantity"] < item_input.quantity
-            ):
-                raise ItemUnavailableError(
-                    detail=f"Not enough stock for item '{item_data['name']}'."
-                )
-            actual_price = item_data["price"]
-            if round(actual_price, CURRENCY_DECIMAL_PLACES) != round(
-                item_input.unit_price, CURRENCY_DECIMAL_PLACES
-            ):
-                raise PriceChangedError(
-                    detail=f"Price for '{item_data['name']}' has changed."
-                )
-            subtotal += actual_price * item_input.quantity
-            order_items.append(
-                {
-                    "itemId": item_input.item_id,
-                    "name": item_data["name"],
-                    "quantity": item_input.quantity,
-                    "unitPrice": actual_price,
-                }
-            )
-
-        subtotal = round(subtotal, CURRENCY_DECIMAL_PLACES)
-        booking_fee = _calc_booking_fee(subtotal)
-        total = round(subtotal + booking_fee, CURRENCY_DECIMAL_PLACES)
 
         user_ref = FS_CLIENT.document(f"{FirestoreCollections.USERS.value}/{user_id}")
         order_ref = FS_CLIENT.collection(
@@ -154,6 +113,48 @@ class OrderService:
 
         @firestore.transactional
         def _run(transaction):
+            item_snaps = FS_CLIENT.get_all(item_refs, transaction=transaction)
+            item_data_by_id: dict[str, dict] = {}
+            for snap in item_snaps:
+                if snap.exists:
+                    item_data_by_id[snap.id] = snap.to_dict()
+
+            order_items = []
+            subtotal = 0.0
+            for item_input in payload.items:
+                item_data = item_data_by_id.get(item_input.item_id)
+                if not item_data or item_data.get("status") == MenuItemStatus.DELETED:
+                    raise ItemUnavailableError(
+                        detail=f"Item '{item_input.item_id}' is not available."
+                    )
+                if (
+                    item_data.get("quantity") is not None
+                    and item_data["quantity"] < item_input.quantity
+                ):
+                    raise ItemUnavailableError(
+                        detail=f"Not enough stock for item '{item_data['name']}'."
+                    )
+                actual_price = item_data["price"]
+                if round(actual_price, CURRENCY_DECIMAL_PLACES) != round(
+                    item_input.unit_price, CURRENCY_DECIMAL_PLACES
+                ):
+                    raise PriceChangedError(
+                        detail=f"Price for '{item_data['name']}' has changed."
+                    )
+                subtotal += actual_price * item_input.quantity
+                order_items.append(
+                    {
+                        "itemId": item_input.item_id,
+                        "name": item_data["name"],
+                        "quantity": item_input.quantity,
+                        "unitPrice": actual_price,
+                    }
+                )
+
+            subtotal = round(subtotal, CURRENCY_DECIMAL_PLACES)
+            booking_fee = _calc_booking_fee(subtotal)
+            total = round(subtotal + booking_fee, CURRENCY_DECIMAL_PLACES)
+
             user_snap = user_ref.get(transaction=transaction)
             user_data = user_snap.to_dict()
             balance = user_data.get("balance", 0)
@@ -162,17 +163,18 @@ class OrderService:
                     detail=f"Balance {balance} is less than required {total}."
                 )
             currency = user_data.get("currency", DEFAULT_CURRENCY)
+            pricing_summary = {
+                "subtotal": subtotal,
+                "bookingFee": booking_fee,
+                "total": total,
+            }
             order_doc = {
                 "_id": order_id,
                 "customerId": user_id,
                 "status": OrderStatus.PENDING,
                 "restaurant": {"name": restaurant_data["name"]},
                 "currency": currency,
-                "pricingSummary": {
-                    "subtotal": subtotal,
-                    "bookingFee": booking_fee,
-                    "total": total,
-                },
+                "pricingSummary": pricing_summary,
                 "items": order_items,
                 "itemIds": [item.item_id for item in payload.items],
                 "_createdAt": now,
@@ -183,9 +185,19 @@ class OrderService:
             )
             transaction.update(restaurant_ref, {"lastActivityAt": now})
             transaction.set(order_ref, order_doc)
-            return currency
+            for item_ref, item_input in zip(item_refs, payload.items):
+                item_data = item_data_by_id[item_input.item_id]
+                if item_data.get("quantity") is not None:
+                    transaction.update(
+                        item_ref,
+                        {
+                            "quantity": item_data["quantity"] - item_input.quantity,
+                            "_updatedAt": now,
+                        },
+                    )
+            return currency, pricing_summary, order_items
 
-        currency = _run(transaction)
+        currency, pricing_summary, order_items = _run(transaction)
 
         return OrderResponseDTO.model_validate(
             {
@@ -194,11 +206,7 @@ class OrderService:
                 "status": OrderStatus.PENDING,
                 "restaurant": {"name": restaurant_data["name"]},
                 "currency": currency,
-                "pricingSummary": {
-                    "subtotal": subtotal,
-                    "bookingFee": booking_fee,
-                    "total": total,
-                },
+                "pricingSummary": pricing_summary,
                 "items": order_items,
             }
         )
