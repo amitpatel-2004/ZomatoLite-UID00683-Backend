@@ -24,6 +24,7 @@ from app.constants import (
     DEFAULT_BALANCE,
     DEFAULT_CURRENCY,
     FIREBASE_TIMEOUT_SECONDS,
+    TIMEZONE,
 )
 from app.enums import FirestoreCollections
 from app.settings import FS_CLIENT, FIREBASE_WEB_API_KEY
@@ -58,7 +59,7 @@ class AuthService:
         except FirebaseError as e:
             raise RuntimeError(f"Firebase sign-up error: {str(e)}")
 
-        now = datetime.now(ZoneInfo("UTC"))
+        now = datetime.now(ZoneInfo(TIMEZONE))
         FS_CLIENT.document(f"{FirestoreCollections.USERS.value}/{uid}").set(
             {
                 "_id": uid,

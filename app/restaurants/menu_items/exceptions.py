@@ -12,3 +12,8 @@ class MenuItemNotFoundError(BaseHTTPException):
 class DuplicateMenuItemNameError(BaseHTTPException):
     message = MenuItemErrorMessage.DUPLICATE_MENU_ITEM_NAME
     status_code = HTTPStatus.CONFLICT
+
+
+class MenuItemHasActiveOrdersError(BaseHTTPException):
+    message = MenuItemErrorMessage.MENU_ITEM_HAS_ACTIVE_ORDERS
+    status_code = HTTPStatus.CONFLICT

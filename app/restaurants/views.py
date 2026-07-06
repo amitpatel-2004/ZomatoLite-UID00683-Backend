@@ -15,6 +15,7 @@ from app.restaurants.dtos import (
 from app.restaurants.enums import RestaurantSuccessMessage
 from app.restaurants.exceptions import (
     DuplicateRestaurantNameError,
+    RestaurantHasActiveOrdersError,
     RestaurantNotFoundError,
 )
 from app.restaurants.middleware import require_owner
@@ -166,6 +167,12 @@ class RestaurantView(MethodView):
             200 on success.
             403 if caller doesn't own the restaurant.
             404 if restaurant not found or already deleted.
+            409 if the restaurant has active orders.
         """
-        RestaurantService().delete_restaurant(restaurant_id)
+        try:
+            RestaurantService().delete_restaurant(restaurant_id)
+        except RestaurantHasActiveOrdersError as e:
+            return json_response(
+                message=e.message, status_code=e.status_code, detail=e.detail
+            )
         return json_response(message=RestaurantSuccessMessage.RESTAURANT_DELETED)

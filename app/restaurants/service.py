@@ -3,6 +3,7 @@ from zoneinfo import ZoneInfo
 
 from google.cloud import firestore
 
+from app.constants import TIMEZONE
 from app.enums import FirestoreCollections
 from app.utils import paginate_query
 from app.restaurants.dtos import (
@@ -13,14 +14,16 @@ from app.restaurants.dtos import (
 from app.restaurants.enums import RestaurantStatus
 from app.restaurants.exceptions import (
     DuplicateRestaurantNameError,
+    RestaurantHasActiveOrdersError,
     RestaurantNotFoundError,
 )
 from app.restaurants.menu_items.enums import MenuItemStatus
+from app.restaurants.orders.constants import ACTIVE_ORDER_STATUSES
 from app.settings import FS_CLIENT
 
 
 def _now() -> datetime:
-    return datetime.now(ZoneInfo("UTC"))
+    return datetime.now(ZoneInfo(TIMEZONE))
 
 
 class RestaurantService:
@@ -69,6 +72,23 @@ class RestaurantService:
     @staticmethod
     def _to_response(data: dict) -> dict:
         return RestaurantResponseDTO.model_validate(data).model_dump(by_alias=True)
+
+    def _assert_no_active_orders(self, restaurant_id: str, transaction=None) -> None:
+        """Raise if the restaurant has an order that hasn't reached a terminal status.
+
+        Raises:
+            RestaurantHasActiveOrdersError: If an active order exists for this restaurant.
+        """
+        query = (
+            FS_CLIENT.collection(
+                f"{FirestoreCollections.RESTAURANTS.value}/{restaurant_id}/{FirestoreCollections.ORDERS.value}"
+            )
+            .where("status", "in", ACTIVE_ORDER_STATUSES)
+            .limit(1)
+        )
+        docs = query.get(transaction=transaction)
+        if len(docs) > 0:
+            raise RestaurantHasActiveOrdersError()
 
     def create_restaurant(
         self, owner_uid: str, payload: CreateRestaurantPayloadDTO
@@ -190,25 +210,32 @@ class RestaurantService:
         return RestaurantResponseDTO.model_validate(data)
 
     def delete_restaurant(self, restaurant_id: str) -> None:
-        """Soft-delete a restaurant, and cascade-delete its menu items."""
-        # TODO: When orders feature is implemented, prevent deletion if restaurant has active orders.
+        """Soft-delete a restaurant, and cascade-delete its menu items.
+
+        Raises:
+            RestaurantHasActiveOrdersError: If the restaurant has an active order.
+        """
         now = _now()
-        batch = FS_CLIENT.batch()
         restaurant_ref = FS_CLIENT.document(
             f"{FirestoreCollections.RESTAURANTS.value}/{restaurant_id}"
         )
-        batch.update(
-            restaurant_ref, {"status": RestaurantStatus.DELETED, "_updatedAt": now}
-        )
-        active_items = (
-            FS_CLIENT.collection(
-                f"{FirestoreCollections.RESTAURANTS.value}/{restaurant_id}/{FirestoreCollections.MENU_ITEMS.value}"
+        items_query = FS_CLIENT.collection(
+            f"{FirestoreCollections.RESTAURANTS.value}/{restaurant_id}/{FirestoreCollections.MENU_ITEMS.value}"
+        ).where("status", "==", MenuItemStatus.ACTIVE)
+
+        transaction = FS_CLIENT.transaction()
+
+        @firestore.transactional
+        def _delete(transaction):
+            self._assert_no_active_orders(restaurant_id, transaction=transaction)
+            active_items = items_query.get(transaction=transaction)
+            transaction.update(
+                restaurant_ref, {"status": RestaurantStatus.DELETED, "_updatedAt": now}
             )
-            .where("status", "==", MenuItemStatus.ACTIVE)
-            .get()
-        )
-        for item in active_items:
-            batch.update(
-                item.reference, {"status": MenuItemStatus.DELETED, "_updatedAt": now}
-            )
-        batch.commit()
+            for item in active_items:
+                transaction.update(
+                    item.reference,
+                    {"status": MenuItemStatus.DELETED, "_updatedAt": now},
+                )
+
+        _delete(transaction)

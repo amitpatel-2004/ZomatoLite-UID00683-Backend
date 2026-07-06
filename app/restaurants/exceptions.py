@@ -18,3 +18,8 @@ class NotRestaurantOwnerError(BaseHTTPException):
 class DuplicateRestaurantNameError(BaseHTTPException):
     message = RestaurantErrorMessage.DUPLICATE_RESTAURANT_NAME
     status_code = HTTPStatus.CONFLICT
+
+
+class RestaurantHasActiveOrdersError(BaseHTTPException):
+    message = RestaurantErrorMessage.RESTAURANT_HAS_ACTIVE_ORDERS
+    status_code = HTTPStatus.CONFLICT

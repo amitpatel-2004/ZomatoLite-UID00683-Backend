@@ -1,0 +1,15 @@
+from app.restaurants.orders.enums import OrderStatus
+
+BOOKING_FEE_FLAT = 20.0
+BOOKING_FEE_PERCENT = 0.01
+CURRENCY_DECIMAL_PLACES = 2
+
+ORDER_ITEM_MAX_QUANTITY = 50
+ORDER_MAX_ITEMS = 20
+
+ACTIVE_ORDER_STATUSES = [
+    OrderStatus.PENDING,
+    OrderStatus.ACCEPTED,
+    OrderStatus.PREPARING,
+    OrderStatus.OUT_FOR_DELIVERY,
+]

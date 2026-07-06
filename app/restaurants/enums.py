@@ -11,6 +11,9 @@ class RestaurantSuccessMessage(str, Enum):
 class RestaurantErrorMessage(str, Enum):
     RESTAURANT_NOT_FOUND = "Restaurant not found."
     DUPLICATE_RESTAURANT_NAME = "A restaurant with this name already exists."
+    RESTAURANT_HAS_ACTIVE_ORDERS = (
+        "Restaurant cannot be deleted while it has active orders."
+    )
 
 
 class RestaurantStatus(str, Enum):

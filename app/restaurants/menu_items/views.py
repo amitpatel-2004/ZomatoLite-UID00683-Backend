@@ -18,6 +18,7 @@ from app.restaurants.menu_items.dtos import (
 from app.restaurants.menu_items.enums import MenuItemSuccessMessage
 from app.restaurants.menu_items.exceptions import (
     DuplicateMenuItemNameError,
+    MenuItemHasActiveOrdersError,
     MenuItemNotFoundError,
 )
 from app.restaurants.menu_items.service import MenuItemService
@@ -161,10 +162,11 @@ class MenuItemView(MethodView):
             200 on success.
             403 if caller doesn't own the restaurant.
             404 if restaurant or menu item not found or already deleted.
+            409 if the item is part of an active order.
         """
         try:
             MenuItemService().delete_menu_item(restaurant_id, item_id)
-        except MenuItemNotFoundError as e:
+        except (MenuItemNotFoundError, MenuItemHasActiveOrdersError) as e:
             return json_response(
                 message=e.message, status_code=e.status_code, detail=e.detail
             )

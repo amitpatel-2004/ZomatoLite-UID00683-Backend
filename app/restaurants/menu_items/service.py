@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 
 from google.cloud import firestore
 
+from app.constants import TIMEZONE
 from app.enums import FirestoreCollections
 from app.utils import generate_signed_upload_url, paginate_query
 from app.restaurants.menu_items.dtos import (
@@ -15,13 +16,15 @@ from app.restaurants.menu_items.dtos import (
 from app.restaurants.menu_items.enums import MenuItemStatus
 from app.restaurants.menu_items.exceptions import (
     DuplicateMenuItemNameError,
+    MenuItemHasActiveOrdersError,
     MenuItemNotFoundError,
 )
+from app.restaurants.orders.constants import ACTIVE_ORDER_STATUSES
 from app.settings import FS_CLIENT
 
 
 def _now() -> datetime:
-    return datetime.now(ZoneInfo("UTC"))
+    return datetime.now(ZoneInfo(TIMEZONE))
 
 
 class MenuItemService:
@@ -60,6 +63,26 @@ class MenuItemService:
     @staticmethod
     def _to_response(data: dict) -> dict:
         return MenuItemResponseDTO.model_validate(data).model_dump(by_alias=True)
+
+    def _assert_item_not_in_active_order(
+        self, restaurant_id: str, item_id: str, transaction=None
+    ) -> None:
+        """Raise if the item appears in an order that hasn't reached a terminal status.
+
+        Raises:
+            MenuItemHasActiveOrdersError: If an active order references this item.
+        """
+        query = (
+            FS_CLIENT.collection(
+                f"{FirestoreCollections.RESTAURANTS.value}/{restaurant_id}/{FirestoreCollections.ORDERS.value}"
+            )
+            .where("itemIds", "array_contains", item_id)
+            .where("status", "in", ACTIVE_ORDER_STATUSES)
+            .limit(1)
+        )
+        docs = query.get(transaction=transaction)
+        if len(docs) > 0:
+            raise MenuItemHasActiveOrdersError()
 
     def add_menu_item(
         self, restaurant_id: str, payload: CreateMenuItemPayloadDTO
@@ -191,28 +214,34 @@ class MenuItemService:
 
         Raises:
             MenuItemNotFoundError: If menu item doesn't exist or is already deleted.
+            MenuItemHasActiveOrdersError: If the item is part of an active order.
         """
-        # TODO: Once orders feature is implemented, prevent deletion if the item is part of an active order.
-        snapshot = FS_CLIENT.document(
+        item_ref = FS_CLIENT.document(
             f"{FirestoreCollections.RESTAURANTS.value}/{restaurant_id}/{FirestoreCollections.MENU_ITEMS.value}/{item_id}"
-        ).get()
-        if not snapshot.exists:
-            raise MenuItemNotFoundError(
-                detail=f"No menu item found with id: {item_id} in restaurant: {restaurant_id}"
-            )
-        data = snapshot.to_dict()
-        if data.get("status") == MenuItemStatus.DELETED:
-            raise MenuItemNotFoundError(
-                detail=f"No menu item found with id: {item_id} in restaurant: {restaurant_id}"
-            )
-        FS_CLIENT.document(
-            f"{FirestoreCollections.RESTAURANTS.value}/{restaurant_id}/{FirestoreCollections.MENU_ITEMS.value}/{item_id}"
-        ).update(
-            {
-                "status": MenuItemStatus.DELETED,
-                "_updatedAt": _now(),
-            }
         )
+
+        transaction = FS_CLIENT.transaction()
+
+        @firestore.transactional
+        def _delete(transaction):
+            snapshot = item_ref.get(transaction=transaction)
+            if not snapshot.exists:
+                raise MenuItemNotFoundError(
+                    detail=f"No menu item found with id: {item_id} in restaurant: {restaurant_id}"
+                )
+            data = snapshot.to_dict()
+            if data.get("status") == MenuItemStatus.DELETED:
+                raise MenuItemNotFoundError(
+                    detail=f"No menu item found with id: {item_id} in restaurant: {restaurant_id}"
+                )
+            self._assert_item_not_in_active_order(
+                restaurant_id, item_id, transaction=transaction
+            )
+            transaction.update(
+                item_ref, {"status": MenuItemStatus.DELETED, "_updatedAt": _now()}
+            )
+
+        _delete(transaction)
 
     def generate_menu_item_upload_url(
         self,

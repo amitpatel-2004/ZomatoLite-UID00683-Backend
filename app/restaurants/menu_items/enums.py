@@ -14,6 +14,9 @@ class MenuItemErrorMessage(str, Enum):
     DUPLICATE_MENU_ITEM_NAME = (
         "A menu item with this name already exists in this restaurant."
     )
+    MENU_ITEM_HAS_ACTIVE_ORDERS = (
+        "Menu item cannot be deleted while it is part of an active order."
+    )
 
 
 class MenuItemStatus(str, Enum):
