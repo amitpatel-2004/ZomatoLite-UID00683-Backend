@@ -62,10 +62,23 @@ def csv_notifier(cloud_event):
             )
             lines.append(f"Row {item['rowNumber']}: {item['name']} - {outcome}")
         subject = "Your menu CSV upload is complete"
-        body = f"{success_count} of {total_items} items were added.\n\n" + "\n".join(
-            lines
+
+        body = (
+            f"Summary of your upload:\n"
+            f"- Total Rows Processed: {total_items}\n"
+            f"- Successfully Added: {success_count}\n"
+            f"- Failed Rows: {failed_count}\n\n"
+            f"Detailed Breakdown:\n" + "\n".join(lines)
         )
         updates["status"] = "completed"
+        if failed_count > 0:
+            updates["message"] = (
+                f"Upload complete with warnings. {success_count} of {total_items} items added. {failed_count} item(s) failed or exceeded daily limit quota."
+            )
+        else:
+            updates["message"] = (
+                f"Upload complete. All {total_items} items added successfully."
+            )
 
     FS_CLIENT.collection("mail").add(
         {

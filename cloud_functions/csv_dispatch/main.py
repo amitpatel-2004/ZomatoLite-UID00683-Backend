@@ -89,13 +89,21 @@ def csv_dispatch(cloud_event):
     blob = gcs_client.bucket(bucket_name).blob(object_name)
     rows = list(csv.DictReader(io.StringIO(blob.download_as_text())))
 
-    job_ref = FS_CLIENT.document(f"restaurants/{restaurant_id}/csvUploadJobs/{upload_id}")
+    job_ref = FS_CLIENT.document(
+        f"restaurants/{restaurant_id}/csvUploadJobs/{upload_id}"
+    )
     restaurant_ref = FS_CLIENT.document(f"restaurants/{restaurant_id}")
     owner_id = restaurant_ref.get().to_dict().get("ownerId")
     now = _now()
 
-    missing_columns = [column for column in REQUIRED_COLUMNS if rows and column not in rows[0]]
+    missing_columns = [
+        column for column in REQUIRED_COLUMNS if rows and column not in rows[0]
+    ]
     if not rows or missing_columns:
+        structure_msg = (
+            "File Structure Error: CSV is empty or missing required columns.\n"
+            f"Required columns are: {', '.join(REQUIRED_COLUMNS)}"
+        )
         job_ref.set(
             {
                 "_id": upload_id,
@@ -106,8 +114,7 @@ def csv_dispatch(cloud_event):
                 "totalItems": len(rows),
                 "successCount": 0,
                 "failedCount": 0,
-                "message": "CSV is empty or missing required columns: "
-                + ", ".join(REQUIRED_COLUMNS),
+                "message": structure_msg,
                 "_createdAt": now,
                 "_updatedAt": now,
             }
@@ -116,6 +123,10 @@ def csv_dispatch(cloud_event):
 
     errors = _validate_rows(rows)
     if errors:
+        validation_msg = (
+            f"Validation Failed: Found {len(errors)} format issue(s) in the file.\n\n"
+            + "\n".join(errors)
+        )
         job_ref.set(
             {
                 "_id": upload_id,
@@ -126,7 +137,7 @@ def csv_dispatch(cloud_event):
                 "totalItems": len(rows),
                 "successCount": 0,
                 "failedCount": 0,
-                "message": "\n".join(errors),
+                "message": validation_msg,
                 "_createdAt": now,
                 "_updatedAt": now,
             }
@@ -158,6 +169,13 @@ def csv_dispatch(cloud_event):
     allowed_rows = rows[:remaining]
     quota_rejected_rows = rows[remaining:]
 
+    processing_msg = ""
+    if quota_rejected_rows:
+        processing_msg = (
+            f"Notice: Daily upload quota exceeded. "
+            f"Processing {len(allowed_rows)} rows; skipped {len(quota_rejected_rows)} rows."
+        )
+
     job_ref.set(
         {
             "_id": upload_id,
@@ -168,7 +186,7 @@ def csv_dispatch(cloud_event):
             "totalItems": len(rows),
             "successCount": 0,
             "failedCount": len(quota_rejected_rows),
-            "message": "",
+            "message": processing_msg,
             "_createdAt": now,
             "_updatedAt": now,
         }
