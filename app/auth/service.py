@@ -56,8 +56,8 @@ class AuthService:
             auth.set_custom_user_claims(uid, {"role": payload.role})
         except auth.EmailAlreadyExistsError:
             raise EmailAlreadyExistsError()
-        except FirebaseError as e:
-            raise RuntimeError(f"Firebase sign-up error: {str(e)}")
+        except FirebaseError as err:
+            raise RuntimeError(f"Firebase sign-up error: {str(err)}")
 
         now = datetime.now(ZoneInfo(TIMEZONE))
         FS_CLIENT.document(f"{FirestoreCollections.USERS.value}/{uid}").set(

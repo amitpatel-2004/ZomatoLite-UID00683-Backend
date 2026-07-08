@@ -1,5 +1,6 @@
 from flask import Blueprint
 
+from app.restaurants.menu_items.csv.routes import csv_bp
 from app.restaurants.menu_items.views import (
     MenuItemView,
     get_menu_items,
@@ -22,3 +23,4 @@ menu_items_bp.add_url_rule(
     view_func=MenuItemView.as_view("menu_items_entity"),
     methods=["GET", "PATCH", "DELETE"],
 )
+menu_items_bp.register_blueprint(blueprint=csv_bp, url_prefix="/csv")

@@ -30,19 +30,17 @@ class RegisterView(MethodView):
 
         try:
             input_data = UserRegisterPayloadDTO.model_validate(body)
+            result = AuthService().register_user(input_data)
         except ValidationError as err:
             return json_response(
                 message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
                 errors=extract_validation_errors(err),
                 status_code=HTTPStatus.BAD_REQUEST,
             )
-
-        try:
-            result = AuthService().register_user(input_data)
-        except EmailAlreadyExistsError as e:
+        except EmailAlreadyExistsError as err:
             return json_response(
-                message=e.message,
-                status_code=e.status_code,
+                message=err.message,
+                status_code=err.status_code,
             )
 
         return json_response(
@@ -70,19 +68,17 @@ class LoginView(MethodView):
 
         try:
             input_data = UserLoginPayloadDTO.model_validate(body)
+            result = AuthService().login_user(input_data)
         except ValidationError as err:
             return json_response(
                 message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
                 errors=extract_validation_errors(err),
                 status_code=HTTPStatus.BAD_REQUEST,
             )
-
-        try:
-            result = AuthService().login_user(input_data)
-        except InvalidCredentialsError as e:
+        except InvalidCredentialsError as err:
             return json_response(
-                message=e.message,
-                status_code=e.status_code,
+                message=err.message,
+                status_code=err.status_code,
             )
 
         return json_response(
