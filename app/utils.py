@@ -92,9 +92,10 @@ def generate_signed_upload_url(
     object_path: str,
     content_type: str,
     expiry_minutes: int = SIGNED_UPLOAD_URL_EXPIRY_MINUTES,
+    bucket_name: str = IMAGE_UPLOAD_BUCKET_NAME,
 ) -> str:
     """Generate a signed URL for client-side upload."""
-    bucket = GCS_CLIENT.bucket(IMAGE_UPLOAD_BUCKET_NAME)
+    bucket = GCS_CLIENT.bucket(bucket_name)
     blob = bucket.blob(object_path)
     return blob.generate_signed_url(
         expiration=timedelta(minutes=expiry_minutes),

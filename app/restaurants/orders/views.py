@@ -35,15 +35,13 @@ def placeOrder(restaurant_id: str) -> tuple[Response, HTTPStatus]:
     body = request.get_json() or {}
     try:
         payload = CreateOrderPayloadDTO.model_validate(body)
+        result = OrderService().place_order(g.uid, restaurant_id, payload)
     except ValidationError as err:
         return json_response(
             message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
             errors=extract_validation_errors(err),
             status_code=HTTPStatus.BAD_REQUEST,
         )
-
-    try:
-        result = OrderService().place_order(g.uid, restaurant_id, payload)
     except (
         RestaurantNotFoundError,
         RestaurantClosedError,
@@ -51,9 +49,9 @@ def placeOrder(restaurant_id: str) -> tuple[Response, HTTPStatus]:
         ItemUnavailableError,
         PriceChangedError,
         InsufficientBalanceError,
-    ) as e:
+    ) as err:
         return json_response(
-            message=e.message, status_code=e.status_code, detail=e.detail
+            message=err.message, status_code=err.status_code, detail=err.detail
         )
 
     return json_response(

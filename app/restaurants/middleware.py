@@ -36,9 +36,9 @@ def require_owner(f: Callable) -> Callable:
             restaurant_id: str = str(view_args["restaurant_id"])
             try:
                 restaurant = RestaurantService().get_restaurant(restaurant_id)
-            except RestaurantNotFoundError as e:
+            except RestaurantNotFoundError as err:
                 return json_response(
-                    message=e.message, status_code=e.status_code, detail=e.detail
+                    message=err.message, status_code=err.status_code, detail=err.detail
                 )
             if restaurant.owner_id != g.uid:
                 return json_response(

@@ -77,9 +77,9 @@ class RestaurantView(MethodView):
         """
         try:
             result = RestaurantService().get_restaurant(restaurant_id)
-        except RestaurantNotFoundError as e:
+        except RestaurantNotFoundError as err:
             return json_response(
-                message=e.message, status_code=e.status_code, detail=e.detail
+                message=err.message, status_code=err.status_code, detail=err.detail
             )
 
         return json_response(
@@ -100,18 +100,16 @@ class RestaurantView(MethodView):
         body = request.get_json() or {}
         try:
             payload = CreateRestaurantPayloadDTO.model_validate(body)
+            result = RestaurantService().create_restaurant(g.uid, payload)
         except ValidationError as err:
             return json_response(
                 message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
                 errors=extract_validation_errors(err),
                 status_code=HTTPStatus.BAD_REQUEST,
             )
-
-        try:
-            result = RestaurantService().create_restaurant(g.uid, payload)
-        except DuplicateRestaurantNameError as e:
+        except DuplicateRestaurantNameError as err:
             return json_response(
-                message=e.message, status_code=e.status_code, detail=e.detail
+                message=err.message, status_code=err.status_code, detail=err.detail
             )
 
         return json_response(
@@ -136,20 +134,18 @@ class RestaurantView(MethodView):
         body = request.get_json() or {}
         try:
             payload = UpdateRestaurantPayloadDTO.model_validate(body)
+            result = RestaurantService().update_restaurant(
+                restaurant_id, payload, restaurant
+            )
         except ValidationError as err:
             return json_response(
                 message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
                 errors=extract_validation_errors(err),
                 status_code=HTTPStatus.BAD_REQUEST,
             )
-
-        try:
-            result = RestaurantService().update_restaurant(
-                restaurant_id, payload, restaurant
-            )
-        except DuplicateRestaurantNameError as e:
+        except DuplicateRestaurantNameError as err:
             return json_response(
-                message=e.message, status_code=e.status_code, detail=e.detail
+                message=err.message, status_code=err.status_code, detail=err.detail
             )
 
         return json_response(
@@ -171,8 +167,8 @@ class RestaurantView(MethodView):
         """
         try:
             RestaurantService().delete_restaurant(restaurant_id)
-        except RestaurantHasActiveOrdersError as e:
+        except RestaurantHasActiveOrdersError as err:
             return json_response(
-                message=e.message, status_code=e.status_code, detail=e.detail
+                message=err.message, status_code=err.status_code, detail=err.detail
             )
         return json_response(message=RestaurantSuccessMessage.RESTAURANT_DELETED)

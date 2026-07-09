@@ -24,3 +24,5 @@ class FirestoreCollections(str, Enum):
     RESTAURANTS = "restaurants"
     ORDERS = "orders"
     MENU_ITEMS = "menuItems"
+    CSV_UPLOAD_JOBS = "csvUploadJobs"
+    CSV_UPLOAD_JOB_ITEMS = "items"

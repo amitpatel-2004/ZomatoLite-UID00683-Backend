@@ -1,7 +1,8 @@
 from flask import Flask
-from flask_cors import CORS 
+from flask_cors import CORS
 
 from app.enums import ApiVersionPrefix
+from app.internal.routes import internal_bp
 from app.routes import api_bp
 from app.settings import ALLOWED_ORIGINS
 
@@ -19,5 +20,6 @@ def create_app() -> Flask:
 
 
     app.register_blueprint(api_bp, url_prefix=ApiVersionPrefix.V1.value)
+    app.register_blueprint(internal_bp, url_prefix="/internal")
 
     return app

@@ -62,11 +62,11 @@ class MenuItemView(MethodView):
         """
         try:
             result = MenuItemService().get_menu_item(restaurant_id, item_id)
-        except MenuItemNotFoundError as e:
+        except MenuItemNotFoundError as err:
             return json_response(
-                message=e.message,
-                status_code=e.status_code,
-                detail=e.detail,
+                message=err.message,
+                status_code=err.status_code,
+                detail=err.detail,
             )
 
         return json_response(
@@ -90,18 +90,16 @@ class MenuItemView(MethodView):
         body = request.get_json() or {}
         try:
             payload = CreateMenuItemPayloadDTO.model_validate(body)
+            result = MenuItemService().add_menu_item(restaurant_id, payload)
         except ValidationError as err:
             return json_response(
                 message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
                 errors=extract_validation_errors(err),
                 status_code=HTTPStatus.BAD_REQUEST,
             )
-
-        try:
-            result = MenuItemService().add_menu_item(restaurant_id, payload)
-        except DuplicateMenuItemNameError as e:
+        except DuplicateMenuItemNameError as err:
             return json_response(
-                message=e.message, status_code=e.status_code, detail=e.detail
+                message=err.message, status_code=err.status_code, detail=err.detail
             )
 
         return json_response(
@@ -129,22 +127,20 @@ class MenuItemView(MethodView):
         body = request.get_json() or {}
         try:
             payload = UpdateMenuItemPayloadDTO.model_validate(body)
+            result = MenuItemService().update_menu_item(restaurant_id, item_id, payload)
         except ValidationError as err:
             return json_response(
                 message=ErrorMessage.RESPONSE_MSG_MISSING_FIELDS,
                 errors=extract_validation_errors(err),
                 status_code=HTTPStatus.BAD_REQUEST,
             )
-
-        try:
-            result = MenuItemService().update_menu_item(restaurant_id, item_id, payload)
-        except MenuItemNotFoundError as e:
+        except MenuItemNotFoundError as err:
             return json_response(
-                message=e.message, status_code=e.status_code, detail=e.detail
+                message=err.message, status_code=err.status_code, detail=err.detail
             )
-        except DuplicateMenuItemNameError as e:
+        except DuplicateMenuItemNameError as err:
             return json_response(
-                message=e.message, status_code=e.status_code, detail=e.detail
+                message=err.message, status_code=err.status_code, detail=err.detail
             )
 
         return json_response(
@@ -166,9 +162,9 @@ class MenuItemView(MethodView):
         """
         try:
             MenuItemService().delete_menu_item(restaurant_id, item_id)
-        except (MenuItemNotFoundError, MenuItemHasActiveOrdersError) as e:
+        except (MenuItemNotFoundError, MenuItemHasActiveOrdersError) as err:
             return json_response(
-                message=e.message, status_code=e.status_code, detail=e.detail
+                message=err.message, status_code=err.status_code, detail=err.detail
             )
 
         return json_response(message=MenuItemSuccessMessage.MENU_ITEM_DELETED)
